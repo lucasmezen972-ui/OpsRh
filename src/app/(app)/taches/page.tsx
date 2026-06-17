@@ -1,262 +1,85 @@
-"use client";
-
-import Link from "next/link";
-import {
-  CalendarCheck,
-  AlertTriangle,
-  Send,
-  ListTodo,
-  Plus,
-  MoreHorizontal,
-  CheckCircle2,
-  Clock,
-  CalendarClock,
-  FolderOpen,
-  Mail,
-} from "lucide-react";
-import { PageHeader } from "@/components/shared/page-header";
-import { StatCard } from "@/components/shared/stat-card";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { EmptyState } from "@/components/shared/empty-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   getCase,
   getChecklists,
   getClient,
+  getClients,
+  getCases,
   missingChecklistItems,
   openTasks,
-  overdueTasks,
-  relancesToDo,
-  todayTasks,
 } from "@/lib/data";
-import { PRIORITY, TASK_STATUS, TASK_TYPE } from "@/lib/constants";
-import { daysSince, formatDate, isOverdue } from "@/lib/utils";
-import type { Task } from "@/lib/types";
+import { getSupabaseTaskBoard, getSupabaseCaseOptions, type TaskRow, type TaskSuggestion } from "@/lib/supabase/tasks";
+import { getSupabaseClientOptions } from "@/lib/supabase/cases";
+import { daysSince } from "@/lib/utils";
+import { TasksView } from "./tasks-view";
 
-function TaskTable({ tasks }: { tasks: Task[] }) {
-  if (tasks.length === 0) {
-    return (
-      <EmptyState
-        icon={<ListTodo />}
-        title="Aucune tâche ici"
-        description="Rien à traiter pour ce filtre. Profitez-en pour avancer sur vos dossiers."
-      />
-    );
-  }
-
-  return (
-    <Card className="overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Titre</TableHead>
-            <TableHead>Client</TableHead>
-            <TableHead>Dossier</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Priorité</TableHead>
-            <TableHead>Échéance</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tasks.map((task) => {
-            const client = task.client_id ? getClient(task.client_id) : null;
-            const hrCase = task.hr_case_id ? getCase(task.hr_case_id) : null;
-            const overdue = isOverdue(task.due_date) && task.status !== "termine";
-            return (
-              <TableRow key={task.id}>
-                <TableCell>
-                  <p className="font-medium">{task.title}</p>
-                  {task.description && (
-                    <p className="mt-0.5 max-w-xs truncate text-xs text-muted-foreground">{task.description}</p>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm">{client?.name ?? "—"}</TableCell>
-                <TableCell className="text-sm">{hrCase?.title ?? "—"}</TableCell>
-                <TableCell className="text-sm">{TASK_TYPE[task.type]}</TableCell>
-                <TableCell>
-                  <StatusBadge label={PRIORITY[task.priority].label} tone={PRIORITY[task.priority].tone} />
-                </TableCell>
-                <TableCell
-                  className={overdue ? "text-sm font-medium text-destructive" : "text-sm"}
-                >
-                  {formatDate(task.due_date)}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge label={TASK_STATUS[task.status].label} tone={TASK_STATUS[task.status].tone} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="Actions">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions rapides</DropdownMenuLabel>
-                      <DropdownMenuItem>
-                        <CheckCircle2 className="text-emerald-600" /> Terminer
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <CalendarClock className="text-amber-600" /> Reporter
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/mails">
-                          <Mail className="text-violet-600" /> Générer une relance
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/temps">
-                          <Clock className="text-blue-600" /> Ajouter du temps
-                        </Link>
-                      </DropdownMenuItem>
-                      {hrCase && (
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dossiers/${hrCase.id}`}>
-                            <FolderOpen className="text-slate-600" /> Ouvrir le dossier
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Card>
-  );
+function bucket(rows: TaskRow[]) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    all: rows,
+    today: rows.filter((t) => t.due_date != null && t.due_date <= today),
+    overdue: rows.filter((t) => t.status === "en_retard" || (t.due_date != null && t.due_date < today)),
+    relances: rows.filter((t) => t.type === "relance_client"),
+  };
 }
 
-export default function TasksPage() {
-  const all = openTasks();
-  const today = todayTasks();
-  const overdue = overdueTasks();
-  const relances = relancesToDo();
+export default async function TasksPage() {
+  const board = await getSupabaseTaskBoard();
+  const isDemo = board === null;
 
-  const suggestions = missingChecklistItems()
-    .map((item) => {
-      const checklist = getChecklists().find((c) => c.id === item.checklist_id);
-      const hrCase = checklist?.hr_case_id ? getCase(checklist.hr_case_id) : null;
-      const client = hrCase ? getClient(hrCase.client_id) : null;
-      return { item, hrCase, client, days: daysSince(item.created_at) };
-    })
-    .filter((s) => s.days >= 5);
+  let rows: TaskRow[];
+  let suggestions: TaskSuggestion[];
+  let clientOptions: { id: string; name: string }[];
+  let caseOptions: { id: string; title: string }[];
+
+  if (board) {
+    rows = board.tasks;
+    suggestions = board.suggestions;
+    const [clients, cases] = await Promise.all([getSupabaseClientOptions(), getSupabaseCaseOptions()]);
+    clientOptions = clients ?? [];
+    caseOptions = (cases ?? []).map((c) => ({ id: c.id, title: c.title }));
+  } else {
+    rows = openTasks().map((t) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      client_id: t.client_id,
+      client_name: t.client_id ? getClient(t.client_id)?.name ?? null : null,
+      hr_case_id: t.hr_case_id,
+      case_title: t.hr_case_id ? getCase(t.hr_case_id)?.title ?? null : null,
+      type: t.type,
+      priority: t.priority,
+      status: t.status,
+      due_date: t.due_date,
+    }));
+    suggestions = missingChecklistItems()
+      .map((item) => {
+        const checklist = getChecklists().find((c) => c.id === item.checklist_id);
+        const hrCase = checklist?.hr_case_id ? getCase(checklist.hr_case_id) : null;
+        return {
+          id: item.id,
+          name: item.name,
+          case_id: hrCase?.id ?? null,
+          case_title: hrCase?.title ?? null,
+          days: daysSince(item.created_at),
+        };
+      })
+      .filter((s) => s.days >= 5);
+    clientOptions = getClients().map((c) => ({ id: c.id, name: c.name }));
+    caseOptions = getCases().map((c) => ({ id: c.id, title: c.title }));
+  }
+
+  const buckets = bucket(rows);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Tâches" description="Que dois-je faire ?">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="size-4" /> Nouvelle tâche
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nouvelle tâche</DialogTitle>
-              <DialogDescription>
-                La création de tâche sera bientôt disponible. Vous pourrez définir un titre, un client,
-                un dossier, une priorité et une échéance.
-              </DialogDescription>
-            </DialogHeader>
-          </DialogContent>
-        </Dialog>
-      </PageHeader>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="À faire aujourd'hui" value={today.length} icon={<CalendarCheck />} tone="info" />
-        <StatCard label="En retard" value={overdue.length} icon={<AlertTriangle />} tone="danger" />
-        <StatCard label="Relances à faire" value={relances.length} icon={<Send />} tone="purple" />
-        <StatCard label="Total ouvertes" value={all.length} icon={<ListTodo />} tone="neutral" />
-      </div>
-
-      <Tabs defaultValue="all">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="all">Toutes</TabsTrigger>
-          <TabsTrigger value="today">Aujourd&apos;hui</TabsTrigger>
-          <TabsTrigger value="overdue">En retard</TabsTrigger>
-          <TabsTrigger value="relances">Relances</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all">
-          <TaskTable tasks={all} />
-        </TabsContent>
-        <TabsContent value="today">
-          <TaskTable tasks={today} />
-        </TabsContent>
-        <TabsContent value="overdue">
-          <TaskTable tasks={overdue} />
-        </TabsContent>
-        <TabsContent value="relances">
-          <TaskTable tasks={relances} />
-        </TabsContent>
-      </Tabs>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="size-5 text-violet-600" /> Relances automatiques proposées
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {suggestions.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Aucune relance à proposer pour le moment. 🎉
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {suggestions.map(({ item, hrCase, days }) => (
-                <li
-                  key={item.id}
-                  className="flex flex-col gap-3 rounded-lg border border-violet-100 bg-violet-50/50 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm">
-                      Le document <span className="font-medium">{item.name}</span> est toujours manquant
-                      {hrCase ? (
-                        <>
-                          {" "}
-                          pour le dossier <span className="font-medium">{hrCase.title}</span>
-                        </>
-                      ) : null}
-                      . Voulez-vous générer une relance&nbsp;?
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Demandé depuis {days} jours</p>
-                  </div>
-                  <Button asChild size="sm" variant="outline" className="shrink-0">
-                    <Link href="/mails">
-                      <Mail className="size-4" /> Générer une relance
-                    </Link>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <TasksView
+      all={buckets.all}
+      today={buckets.today}
+      overdue={buckets.overdue}
+      relances={buckets.relances}
+      suggestions={suggestions}
+      clientOptions={clientOptions}
+      caseOptions={caseOptions}
+      isDemo={isDemo}
+    />
   );
 }
