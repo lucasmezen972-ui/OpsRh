@@ -17,6 +17,7 @@ import {
 import { SidebarNav } from "./sidebar";
 import { NotificationsMenu } from "./notifications-menu";
 import { initials } from "@/lib/utils";
+import { logout } from "@/app/login/actions";
 import type { AppNotification, Profile } from "@/lib/types";
 
 export function Topbar({
@@ -75,11 +76,13 @@ export function Topbar({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/login">
-                  <LogOut /> Se déconnecter
-                </Link>
-              </DropdownMenuItem>
+              <form action={logout}>
+                <DropdownMenuItem asChild>
+                  <button type="submit" className="w-full">
+                    <LogOut /> Se déconnecter
+                  </button>
+                </DropdownMenuItem>
+              </form>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
