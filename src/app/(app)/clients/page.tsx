@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Plus, Mail, Phone, ChevronRight } from "lucide-react";
+import { Users, Plus, Mail, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -14,15 +14,59 @@ import {
   clientMissingDocsCount,
   getClients,
 } from "@/lib/data";
+import { getSupabaseClientList } from "@/lib/supabase/clients";
 import { CLIENT_STATUS } from "@/lib/constants";
-import { formatDuration, formatEuro, formatRelative } from "@/lib/utils";
+import type { ClientStatus } from "@/lib/types";
+import { formatDuration, formatEuro } from "@/lib/utils";
 
-export default function ClientsPage() {
-  const clients = getClients();
+// Modèle d'affichage commun aux deux sources (Supabase / démo).
+interface ClientRow {
+  id: string;
+  name: string;
+  sector: string | null;
+  main_contact_name: string | null;
+  main_contact_email: string | null;
+  status: ClientStatus;
+  activeCases: number;
+  missingDocs: number;
+  minutes: number;
+  billable: number;
+}
+
+export default async function ClientsPage() {
+  const supabaseClients = await getSupabaseClientList();
+  const isDemo = supabaseClients === null;
+
+  const rows: ClientRow[] = isDemo
+    ? getClients().map((client) => ({
+        id: client.id,
+        name: client.name,
+        sector: client.sector,
+        main_contact_name: client.main_contact_name,
+        main_contact_email: client.main_contact_email,
+        status: client.status,
+        activeCases: clientActiveCasesCount(client.id),
+        missingDocs: clientMissingDocsCount(client.id),
+        minutes: clientMinutesThisMonth(client.id),
+        billable: clientBillableAmount(client.id),
+      }))
+    : supabaseClients.map((client) => ({
+        id: client.id,
+        name: client.name,
+        sector: client.sector,
+        main_contact_name: client.main_contact_name,
+        main_contact_email: client.main_contact_email,
+        status: client.status,
+        activeCases: client.active_cases_count,
+        missingDocs: client.missing_docs_count,
+        minutes: client.minutes_this_month,
+        billable: client.billable_this_month,
+      }));
 
   return (
     <div className="space-y-6">
       <PageHeader title="Clients" description="Quels clients je gère ?">
+        {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <Button asChild>
           <Link href="/clients/nouveau">
             <Plus className="size-4" /> Nouveau client
@@ -30,7 +74,7 @@ export default function ClientsPage() {
         </Button>
       </PageHeader>
 
-      {clients.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState
           icon={<Users />}
           title="Vous n'avez pas encore de client"
@@ -54,9 +98,8 @@ export default function ClientsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clients.map((client) => {
+              {rows.map((client) => {
                 const status = CLIENT_STATUS[client.status];
-                const missing = clientMissingDocsCount(client.id);
                 return (
                   <TableRow key={client.id} className="cursor-pointer">
                     <TableCell>
@@ -78,20 +121,16 @@ export default function ClientsPage() {
                     <TableCell>
                       <StatusBadge label={status.label} tone={status.tone} />
                     </TableCell>
-                    <TableCell className="text-center font-medium">{clientActiveCasesCount(client.id)}</TableCell>
+                    <TableCell className="text-center font-medium">{client.activeCases}</TableCell>
                     <TableCell className="text-center">
-                      {missing > 0 ? (
-                        <Badge variant="warning">{missing}</Badge>
+                      {client.missingDocs > 0 ? (
+                        <Badge variant="warning">{client.missingDocs}</Badge>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right text-sm">
-                      {formatDuration(clientMinutesThisMonth(client.id))}
-                    </TableCell>
-                    <TableCell className="text-right text-sm font-medium">
-                      {formatEuro(clientBillableAmount(client.id))}
-                    </TableCell>
+                    <TableCell className="text-right text-sm">{formatDuration(client.minutes)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatEuro(client.billable)}</TableCell>
                     <TableCell>
                       <Button asChild variant="ghost" size="icon">
                         <Link href={`/clients/${client.id}`} aria-label={`Ouvrir ${client.name}`}>
