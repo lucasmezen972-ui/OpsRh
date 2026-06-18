@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   caseReceivedDocsCount,
+  caseMissingDocsCount,
   getCase,
   getCaseActivity,
   getCaseChecklists,
@@ -31,24 +32,51 @@ import {
   getChecklistItems,
   getClient,
 } from "@/lib/data";
+import { getSupabaseCaseDetail, type CaseDetail } from "@/lib/supabase/details";
 import { CASE_STATUS, CASE_TYPE, DOCUMENT_STATUS, PRIORITY } from "@/lib/constants";
 import { formatDate, formatDuration, formatRelative } from "@/lib/utils";
 
-export default function DossierDetailPage({ params }: { params: { id: string } }) {
-  const hrCase = getCase(params.id);
-  if (!hrCase) notFound();
+export default async function DossierDetailPage({ params }: { params: { id: string } }) {
+  const result = await getSupabaseCaseDetail(params.id);
+  if (result.status === "not_found") notFound();
 
-  const client = getClient(hrCase.client_id);
+  let detail: CaseDetail;
+  let isDemo: boolean;
+
+  if (result.status === "ok") {
+    detail = result.detail;
+    isDemo = false;
+  } else {
+    const hrCase = getCase(params.id);
+    if (!hrCase) notFound();
+    isDemo = true;
+    const docs = caseReceivedDocsCount(hrCase.id);
+    const timeEntries = getCaseTimeEntries(hrCase.id);
+    detail = {
+      hrCase,
+      client: getClient(hrCase.client_id),
+      checklists: getCaseChecklists(hrCase.id).map((checklist) => ({
+        checklist,
+        items: getChecklistItems(checklist.id),
+      })),
+      tasks: getCaseTasks(hrCase.id),
+      documents: [],
+      timeEntries,
+      emails: getCaseEmails(hrCase.id),
+      comments: getCaseComments(hrCase.id),
+      activity: getCaseActivity(hrCase.id),
+      stats: {
+        received: docs.received,
+        total: docs.total,
+        missing: caseMissingDocsCount(hrCase.id),
+        minutes: timeEntries.reduce((sum, t) => sum + t.duration_minutes, 0),
+      },
+    };
+  }
+
+  const { hrCase, client, checklists, tasks, emails, comments, timeEntries, activity, stats } = detail;
   const status = CASE_STATUS[hrCase.status];
   const priority = PRIORITY[hrCase.priority];
-  const docs = caseReceivedDocsCount(hrCase.id);
-  const checklists = getCaseChecklists(hrCase.id);
-  const tasks = getCaseTasks(hrCase.id);
-  const emails = getCaseEmails(hrCase.id);
-  const comments = getCaseComments(hrCase.id);
-  const timeEntries = getCaseTimeEntries(hrCase.id);
-  const activity = getCaseActivity(hrCase.id);
-  const totalMinutes = timeEntries.reduce((sum, t) => sum + t.duration_minutes, 0);
 
   return (
     <div className="space-y-6">
@@ -59,6 +87,7 @@ export default function DossierDetailPage({ params }: { params: { id: string } }
       </Button>
 
       <PageHeader title={hrCase.title} description={client?.name ?? undefined}>
+        {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <StatusBadge label={status.label} tone={status.tone} />
         <StatusBadge label={priority.label} tone={priority.tone} />
         <Button asChild variant="outline">
@@ -72,12 +101,7 @@ export default function DossierDetailPage({ params }: { params: { id: string } }
         <StatCard label="Statut" value={status.label} icon={<Flag />} tone={status.tone} />
         <StatCard label="Priorité" value={priority.label} icon={<Flag />} tone={priority.tone} />
         <StatCard label="Échéance" value={formatDate(hrCase.due_date)} icon={<Calendar />} tone="info" />
-        <StatCard
-          label="Documents reçus"
-          value={`${docs.received}/${docs.total}`}
-          icon={<FileText />}
-          tone="success"
-        />
+        <StatCard label="Documents reçus" value={`${stats.received}/${stats.total}`} icon={<FileText />} tone="success" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -118,51 +142,46 @@ export default function DossierDetailPage({ params }: { params: { id: string } }
                   description="Ajoutez une checklist pour suivre les documents attendus."
                 />
               ) : (
-                checklists.map((checklist) => {
-                  const items = getChecklistItems(checklist.id);
-                  return (
-                    <div key={checklist.id} className="space-y-3">
-                      <p className="text-sm font-semibold">{checklist.title}</p>
-                      <ul className="space-y-3">
-                        {items.map((item) => {
-                          const docStatus = DOCUMENT_STATUS[item.status];
-                          return (
-                            <li
-                              key={item.id}
-                              className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between"
-                            >
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-medium">{item.name}</p>
-                                  {item.required ? (
-                                    <Badge variant="warning">Obligatoire</Badge>
-                                  ) : (
-                                    <Badge variant="neutral">Optionnel</Badge>
-                                  )}
-                                  <StatusBadge label={docStatus.label} tone={docStatus.tone} />
-                                </div>
-                                {item.comment && (
-                                  <p className="text-xs text-muted-foreground">{item.comment}</p>
+                checklists.map(({ checklist, items }) => (
+                  <div key={checklist.id} className="space-y-3">
+                    <p className="text-sm font-semibold">{checklist.title}</p>
+                    <ul className="space-y-3">
+                      {items.map((item) => {
+                        const docStatus = DOCUMENT_STATUS[item.status];
+                        return (
+                          <li
+                            key={item.id}
+                            className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between"
+                          >
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-medium">{item.name}</p>
+                                {item.required ? (
+                                  <Badge variant="warning">Obligatoire</Badge>
+                                ) : (
+                                  <Badge variant="neutral">Optionnel</Badge>
                                 )}
+                                <StatusBadge label={docStatus.label} tone={docStatus.tone} />
                               </div>
-                              <div className="flex shrink-0 flex-wrap gap-2">
-                                <Button variant="outline" size="sm">
-                                  Relancer
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  Marquer reçu
-                                </Button>
-                                <Button size="sm">
-                                  <CheckCircle2 className="size-4" /> Valider
-                                </Button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  );
-                })
+                              {item.comment && <p className="text-xs text-muted-foreground">{item.comment}</p>}
+                            </div>
+                            <div className="flex shrink-0 flex-wrap gap-2">
+                              <Button variant="outline" size="sm">
+                                Relancer
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                Marquer reçu
+                              </Button>
+                              <Button size="sm">
+                                <CheckCircle2 className="size-4" /> Valider
+                              </Button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>
@@ -174,9 +193,7 @@ export default function DossierDetailPage({ params }: { params: { id: string } }
             </CardHeader>
             <CardContent>
               {tasks.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Aucune tâche liée à ce dossier.
-                </p>
+                <p className="py-6 text-center text-sm text-muted-foreground">Aucune tâche liée à ce dossier.</p>
               ) : (
                 <ul className="space-y-3">
                   {tasks.map((t) => (
@@ -205,9 +222,7 @@ export default function DossierDetailPage({ params }: { params: { id: string } }
             </CardHeader>
             <CardContent>
               {emails.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Aucun mail généré pour ce dossier.
-                </p>
+                <p className="py-6 text-center text-sm text-muted-foreground">Aucun mail généré pour ce dossier.</p>
               ) : (
                 <ul className="space-y-3">
                   {emails.map((e) => (
@@ -281,7 +296,7 @@ export default function DossierDetailPage({ params }: { params: { id: string } }
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-2xl font-semibold tracking-tight">{formatDuration(totalMinutes)}</p>
+              <p className="text-2xl font-semibold tracking-tight">{formatDuration(stats.minutes)}</p>
               {timeEntries.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun temps saisi.</p>
               ) : (
