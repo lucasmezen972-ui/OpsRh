@@ -34,6 +34,7 @@ import {
   getClientTasks,
   getClientTimeEntries,
 } from "@/lib/data";
+import { getSupabaseClientDetail, type ClientDetail } from "@/lib/supabase/details";
 import {
   CASE_STATUS,
   CASE_TYPE,
@@ -46,18 +47,41 @@ import {
 } from "@/lib/constants";
 import { formatDate, formatDuration, formatEuro, formatRelative } from "@/lib/utils";
 
-export default function ClientDetailPage({ params }: { params: { id: string } }) {
-  const client = getClient(params.id);
-  if (!client) notFound();
+export default async function ClientDetailPage({ params }: { params: { id: string } }) {
+  const result = await getSupabaseClientDetail(params.id);
+  if (result.status === "not_found") notFound();
 
+  let detail: ClientDetail;
+  let isDemo: boolean;
+
+  if (result.status === "ok") {
+    detail = result.detail;
+    isDemo = false;
+  } else {
+    // Mode démo
+    const client = getClient(params.id);
+    if (!client) notFound();
+    isDemo = true;
+    detail = {
+      client,
+      contacts: getClientContacts(client.id),
+      cases: getClientCases(client.id),
+      documents: getClientDocuments(client.id),
+      tasks: getClientTasks(client.id),
+      timeEntries: getClientTimeEntries(client.id),
+      preInvoices: getClientPreInvoices(client.id),
+      activity: getClientActivity(client.id),
+      stats: {
+        activeCases: clientActiveCasesCount(client.id),
+        missingDocs: clientMissingDocsCount(client.id),
+        minutes: clientMinutesThisMonth(client.id),
+        billable: clientBillableAmount(client.id),
+      },
+    };
+  }
+
+  const { client, contacts, cases, tasks, documents, timeEntries, preInvoices, activity, stats } = detail;
   const status = CLIENT_STATUS[client.status];
-  const contacts = getClientContacts(client.id);
-  const cases = getClientCases(client.id);
-  const tasks = getClientTasks(client.id);
-  const documents = getClientDocuments(client.id);
-  const timeEntries = getClientTimeEntries(client.id);
-  const preInvoices = getClientPreInvoices(client.id);
-  const activity = getClientActivity(client.id);
 
   return (
     <div className="space-y-6">
@@ -68,6 +92,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       </Button>
 
       <PageHeader title={client.name} description={client.sector ?? undefined}>
+        {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <StatusBadge label={status.label} tone={status.tone} />
         <Button asChild variant="outline">
           <Link href="/dossiers/nouveau">
@@ -77,10 +102,10 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       </PageHeader>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Dossiers actifs" value={clientActiveCasesCount(client.id)} icon={<FileText />} tone="info" />
-        <StatCard label="Docs manquants" value={clientMissingDocsCount(client.id)} icon={<FileText />} tone="warning" />
-        <StatCard label="Temps ce mois" value={formatDuration(clientMinutesThisMonth(client.id))} icon={<Calendar />} tone="info" />
-        <StatCard label="Pré-facturable" value={formatEuro(clientBillableAmount(client.id))} icon={<FileText />} tone="success" />
+        <StatCard label="Dossiers actifs" value={stats.activeCases} icon={<FileText />} tone="info" />
+        <StatCard label="Docs manquants" value={stats.missingDocs} icon={<FileText />} tone="warning" />
+        <StatCard label="Temps ce mois" value={formatDuration(stats.minutes)} icon={<Calendar />} tone="info" />
+        <StatCard label="Pré-facturable" value={formatEuro(stats.billable)} icon={<FileText />} tone="success" />
       </div>
 
       <Tabs defaultValue="overview">
@@ -132,15 +157,19 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
                   <CardTitle className="text-base">Contacts</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {contacts.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{c.name}</p>
-                        <p className="text-xs text-muted-foreground">{c.role}</p>
+                  {contacts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucun contact.</p>
+                  ) : (
+                    contacts.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{c.name}</p>
+                          <p className="text-xs text-muted-foreground">{c.role}</p>
+                        </div>
+                        {c.portal_access && <Badge variant="success">Portail</Badge>}
                       </div>
-                      {c.portal_access && <Badge variant="success">Portail</Badge>}
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </CardContent>
               </Card>
             </div>

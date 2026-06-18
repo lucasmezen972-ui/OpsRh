@@ -20,16 +20,12 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import {
-  dashboardStats,
-  getActivity,
-  getCase,
-  getClient,
-  todayTasks,
-  urgentAlerts,
-} from "@/lib/data";
+import { dashboardStats, getActivity, getCase, getClient, todayTasks, urgentAlerts } from "@/lib/data";
+import { getSupabaseDashboard, type DashboardData } from "@/lib/supabase/dashboard";
 import { PRIORITY, TASK_TYPE } from "@/lib/constants";
+import type { Priority, TaskType } from "@/lib/types";
 import { formatDuration, formatEuro, formatRelative, isOverdue } from "@/lib/utils";
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
@@ -41,17 +37,37 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   dossier_maj: <Activity className="size-4 text-slate-600" />,
 };
 
-export default function DashboardPage() {
-  const stats = dashboardStats();
-  const today = todayTasks();
-  const alerts = urgentAlerts();
-  const activity = getActivity().slice(0, 6);
+export default async function DashboardPage() {
+  const supabaseData = await getSupabaseDashboard();
+  const isDemo = supabaseData === null;
+
+  const data: DashboardData = supabaseData ?? {
+    stats: dashboardStats(),
+    today: todayTasks().map((t) => ({
+      id: t.id,
+      title: t.title,
+      priority: t.priority,
+      type: t.type,
+      client_name: t.client_id ? getClient(t.client_id)?.name ?? null : null,
+      case_title: t.hr_case_id ? getCase(t.hr_case_id)?.title ?? null : null,
+      due_date: t.due_date,
+      status: t.status,
+    })),
+    alerts: urgentAlerts().map((a) => ({ id: a.id, title: a.title, detail: a.detail, href: a.href })),
+    activity: getActivity()
+      .slice(0, 6)
+      .map((log) => ({
+        id: log.id,
+        action_type: log.action_type,
+        description: log.description,
+        client_name: log.client_id ? getClient(log.client_id)?.name ?? null : null,
+        created_at: log.created_at,
+      })),
+  };
+
+  const { stats, today, alerts, activity } = data;
   const now = new Date();
-  const dateLabel = new Intl.DateTimeFormat("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(now);
+  const dateLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(now);
 
   return (
     <div className="space-y-6">
@@ -59,6 +75,7 @@ export default function DashboardPage() {
         title="À traiter aujourd'hui"
         description={`${dateLabel.charAt(0).toUpperCase()}${dateLabel.slice(1)} — voici ce qui demande votre attention.`}
       >
+        {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <Button asChild variant="outline">
           <Link href="/temps">Saisir du temps</Link>
         </Button>
@@ -67,7 +84,6 @@ export default function DashboardPage() {
         </Button>
       </PageHeader>
 
-      {/* Cartes de résumé */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
         <StatCard label="Tâches du jour" value={stats.todayTasks} icon={<CalendarCheck />} tone="info" href="/taches" />
         <StatCard label="En retard" value={stats.overdueTasks} icon={<AlertTriangle />} tone="danger" href="/taches" />
@@ -101,20 +117,21 @@ export default function DashboardPage() {
             ) : (
               <ul className="divide-y">
                 {today.map((task) => {
-                  const client = task.client_id ? getClient(task.client_id) : null;
-                  const hrCase = task.hr_case_id ? getCase(task.hr_case_id) : null;
                   const overdue = isOverdue(task.due_date) && task.status !== "termine";
                   return (
                     <li key={task.id} className="flex items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="truncate text-sm font-medium">{task.title}</p>
-                          <StatusBadge label={PRIORITY[task.priority].label} tone={PRIORITY[task.priority].tone} />
+                          <StatusBadge
+                            label={PRIORITY[task.priority as Priority].label}
+                            tone={PRIORITY[task.priority as Priority].tone}
+                          />
                         </div>
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {TASK_TYPE[task.type]}
-                          {client && ` · ${client.name}`}
-                          {hrCase && ` · ${hrCase.title}`}
+                          {TASK_TYPE[task.type as TaskType]}
+                          {task.client_name && ` · ${task.client_name}`}
+                          {task.case_title && ` · ${task.case_title}`}
                           {overdue && <span className="font-medium text-destructive"> · en retard</span>}
                         </p>
                       </div>
@@ -170,23 +187,24 @@ export default function DashboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-1">
-            {activity.map((log) => {
-              const client = log.client_id ? getClient(log.client_id) : null;
-              return (
+          {activity.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Aucune activité récente.</p>
+          ) : (
+            <ul className="space-y-1">
+              {activity.map((log) => (
                 <li key={log.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                     {ACTIVITY_ICONS[log.action_type] ?? <Activity className="size-4 text-slate-600" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{log.description}</p>
-                    {client && <p className="text-xs text-muted-foreground">{client.name}</p>}
+                    {log.client_name && <p className="text-xs text-muted-foreground">{log.client_name}</p>}
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">{formatRelative(log.created_at)}</span>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>
