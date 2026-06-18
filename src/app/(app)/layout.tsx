@@ -1,10 +1,13 @@
 import { SidebarNav } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { getNotifications, getProfile } from "@/lib/data";
+import { getSessionContext } from "@/lib/supabase/session";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const profile = getProfile();
-  const notifications = getNotifications();
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // Session réelle si l'utilisateur est connecté, sinon données de démonstration.
+  const session = await getSessionContext();
+  const profile = session?.profile ?? getProfile();
+  const notifications = session?.notifications ?? getNotifications();
 
   return (
     <div className="min-h-screen bg-background">
