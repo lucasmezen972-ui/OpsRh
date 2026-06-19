@@ -1,15 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/config";
 
 // Rafraîchit la session Supabase à chaque requête (no-op si non configuré).
 export async function middleware(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return NextResponse.next();
+  if (!isSupabaseConfigured) return NextResponse.next();
 
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(url, key, {
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
