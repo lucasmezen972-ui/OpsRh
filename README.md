@@ -108,6 +108,22 @@ src/
 Pour passer en production, remplacez chaque fonction par sa requête Supabase
 équivalente — les composants UI n'ont pas besoin d'être modifiés.
 
+## ☁️ Déploiement sur Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/lucasmezen972-ui/OpsRh)
+
+1. Cliquez sur le bouton ci‑dessus (ou **vercel.com/new** → import `lucasmezen972-ui/OpsRh`).
+2. Framework **Next.js** détecté automatiquement — laissez les réglages par défaut.
+3. **Deploy**. Aucune variable d'environnement n'est requise : les identifiants
+   Supabase publics (URL + clé `anon`) sont fournis par défaut dans le code
+   (`src/lib/supabase/config.ts`) et restent surchargeables via
+   `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+4. Une fois l'URL générée, ajoutez‑la dans **Supabase → Authentication → URL
+   Configuration** (Site URL + Redirect URLs) pour activer la connexion.
+
+> Compte de démonstration connecté : **demo@opsrh.fr** / **demo1234**.
+> Sans connexion, l'app reste explorable en **mode démo** (données fictives).
+
 ## 🗺️ Roadmap
 
 1. ✅ Cœur fonctionnel (v1, interface complète + schéma + RLS)
