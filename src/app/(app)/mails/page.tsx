@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Mail,
   Plus,
@@ -21,6 +21,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,6 +38,7 @@ import {
 import { getCases, getClients, getEmailTemplates, getGeneratedEmails } from "@/lib/data";
 import { formatRelative } from "@/lib/utils";
 import type { Tone } from "@/lib/constants";
+import { createEmailTemplateAction, markGeneratedEmailSentAction, saveGeneratedEmailAction } from "./actions";
 
 const MAIL_TYPES: { value: string; label: string }[] = [
   { value: "relance_documents", label: "Relance documents manquants" },
@@ -138,30 +147,92 @@ const STATUS_TONES: Record<string, Tone> = {
 };
 
 export default function MailsPage() {
+  const [pending, startTransition] = useTransition();
   const clients = getClients();
   const cases = getCases();
   const templates = getEmailTemplates();
-  const generated = getGeneratedEmails();
+  const [templateList, setTemplateList] = useState(templates);
+  const [generated, setGenerated] = useState(getGeneratedEmails());
+  const [message, setMessage] = useState<string | null>(null);
+  const [lastGeneratedId, setLastGeneratedId] = useState<string | null>(null);
+
+  const [documentName, setDocumentName] = useState<string | null>(null);
 
   const [type, setType] = useState<string>(MAIL_TYPES[0].value);
   const [clientId, setClientId] = useState<string>(clients[0]?.id ?? "");
   const [caseId, setCaseId] = useState<string>(cases[0]?.id ?? "");
 
-  const defaultClientName = clients[0]?.name ?? "";
-  const defaultCaseName = cases[0]?.title ?? "";
-  const initial = generateEmail(MAIL_TYPES[0].value, defaultClientName, defaultCaseName);
+  const initial = useMemo(() => {
+    const clientName = clients[0]?.name ?? "";
+    const caseName = cases[0]?.title ?? "";
+    return generateEmail(MAIL_TYPES[0].value, clientName, caseName);
+  }, [cases, clients]);
 
   const [subject, setSubject] = useState<string>(initial.subject);
   const [body, setBody] = useState<string>(initial.body);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextType = params.get("type") ?? MAIL_TYPES[0].value;
+    const nextClientId = params.get("clientId") ?? clients[0]?.id ?? "";
+    const nextCaseId = params.get("caseId") ?? cases[0]?.id ?? "";
+    const nextDocumentName = params.get("document");
+    setType(nextType);
+    setClientId(nextClientId);
+    setCaseId(nextCaseId);
+    setDocumentName(nextDocumentName);
+
+    const clientName = clients.find((c) => c.id === nextClientId)?.name ?? "";
+    const caseName = cases.find((c) => c.id === nextCaseId)?.title ?? "";
+    const email = generateEmail(nextType, clientName, caseName);
+    setSubject(email.subject);
+    setBody(
+      nextDocumentName
+        ? email.body.replace("- Pièce d'identité\n- RIB\n- Justificatif de domicile", `- ${nextDocumentName}`)
+        : email.body
+    );
+  }, [cases, clients]);
+
   function handleGenerate() {
     const clientName = clients.find((c) => c.id === clientId)?.name ?? "";
     const caseName = cases.find((c) => c.id === caseId)?.title ?? "";
     const { subject: s, body: b } = generateEmail(type, clientName, caseName);
+    const nextBody = documentName
+      ? b.replace("- Pièce d'identité\n- RIB\n- Justificatif de domicile", `- ${documentName}`)
+      : b;
     setSubject(s);
-    setBody(b);
+    setBody(nextBody);
     setCopied(false);
+    setMessage("Mail généré. Vous pouvez le modifier avant enregistrement.");
+    startTransition(async () => {
+      const result = await saveGeneratedEmailAction({
+        client_id: clientId,
+        hr_case_id: caseId,
+        subject: s,
+        body: nextBody,
+        status: "brouillon",
+      });
+      if (result.ok) {
+        const id = result.id ?? `local-${Date.now()}`;
+        setLastGeneratedId(id);
+        setGenerated((current) => [
+          { id, owner_id: "", client_id: clientId, hr_case_id: caseId, template_id: null, subject: s, body: nextBody, status: "brouillon", created_at: new Date().toISOString() },
+          ...current,
+        ]);
+        setMessage("Mail généré et enregistré en brouillon.");
+      } else if (result.reason === "demo_mode") {
+        const id = `demo-${Date.now()}`;
+        setLastGeneratedId(id);
+        setGenerated((current) => [
+          { id, owner_id: "", client_id: clientId, hr_case_id: caseId, template_id: null, subject: s, body: nextBody, status: "brouillon", created_at: new Date().toISOString() },
+          ...current,
+        ]);
+        setMessage("Mail généré en brouillon local (mode démo).");
+      } else {
+        setMessage(result.message);
+      }
+    });
   }
 
   function loadTemplate(tplType: string, tplSubject: string, tplBody: string) {
@@ -175,19 +246,108 @@ export default function MailsPage() {
     try {
       await navigator.clipboard.writeText(`${subject}\n\n${body}`);
       setCopied(true);
+      setMessage("Mail copié dans le presse-papiers.");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setMessage("Impossible de copier le mail.");
     }
+  }
+
+  function markAsSent() {
+    if (!lastGeneratedId) {
+      setMessage("Générez d'abord un brouillon avant de le marquer comme envoyé.");
+      return;
+    }
+    if (lastGeneratedId.startsWith("demo-") || lastGeneratedId.startsWith("local-")) {
+      setGenerated((current) => current.map((mail) => (mail.id === lastGeneratedId ? { ...mail, status: "envoye" } : mail)));
+      setMessage("Mail marqué comme envoyé en mode démo.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await markGeneratedEmailSentAction(lastGeneratedId);
+      setMessage(result.ok ? "Mail marqué comme envoyé." : result.message);
+      if (result.ok) {
+        setGenerated((current) => current.map((mail) => (mail.id === lastGeneratedId ? { ...mail, status: "envoye" } : mail)));
+      }
+    });
+  }
+
+  function createTemplate(formData: FormData) {
+    const title = String(formData.get("template_title") ?? "");
+    const tplType = String(formData.get("template_type") ?? "");
+    const tplSubject = String(formData.get("template_subject") ?? "");
+    const tplBody = String(formData.get("template_body") ?? "");
+    const variables = String(formData.get("template_variables") ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    setMessage("Création du modèle en cours...");
+    startTransition(async () => {
+      const result = await createEmailTemplateAction({ title, type: tplType, subject: tplSubject, body: tplBody, variables });
+      if (result.ok || result.reason === "demo_mode") {
+        setTemplateList((current) => [
+          { id: result.ok ? result.id ?? `tpl-${Date.now()}` : `demo-tpl-${Date.now()}`, owner_id: "", title, type: tplType, subject: tplSubject, body: tplBody, variables, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          ...current,
+        ]);
+        setMessage(result.ok ? "Modèle créé." : "Modèle créé localement en mode démo.");
+      } else {
+        setMessage(result.message);
+      }
+    });
   }
 
   return (
     <div className="space-y-6">
       <PageHeader title="Mails & modèles" description="Que puis-je générer ?">
-        <Button>
-          <Plus className="size-4" /> Nouveau modèle
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="size-4" /> Nouveau modèle
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nouveau modèle de mail</DialogTitle>
+              <DialogDescription>Créez un modèle réutilisable avec vos variables métier.</DialogDescription>
+            </DialogHeader>
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                createTemplate(new FormData(event.currentTarget));
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="template_title">Titre</Label>
+                <Input id="template_title" name="template_title" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="template_type">Type</Label>
+                <Input id="template_type" name="template_type" defaultValue={type} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="template_subject">Objet</Label>
+                <Input id="template_subject" name="template_subject" defaultValue={subject} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="template_body">Corps</Label>
+                <Textarea id="template_body" name="template_body" defaultValue={body} rows={8} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="template_variables">Variables disponibles</Label>
+                <Input id="template_variables" name="template_variables" defaultValue="{{contact}}, {{dossier}}, {{signature}}" />
+              </div>
+              <Button type="submit" disabled={pending} className="w-full">Créer le modèle</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </PageHeader>
+      {message && (
+        <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
+          {message}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Générer un mail */}
@@ -246,7 +406,7 @@ export default function MailsPage() {
               </div>
             </div>
 
-            <Button onClick={handleGenerate}>
+            <Button onClick={handleGenerate} disabled={pending}>
               <Sparkles className="size-4" /> Générer
             </Button>
 
@@ -269,7 +429,7 @@ export default function MailsPage() {
                 {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
                 {copied ? "Copié" : "Copier"}
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" disabled={pending} onClick={markAsSent}>
                 <Send className="size-4" /> Marquer comme envoyé
               </Button>
             </div>
@@ -287,7 +447,7 @@ export default function MailsPage() {
             {templates.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Aucun modèle enregistré.</p>
             ) : (
-              templates.map((tpl) => (
+              templateList.map((tpl) => (
                 <div key={tpl.id} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -325,8 +485,8 @@ export default function MailsPage() {
                   <FileText className="size-4 text-muted-foreground" />
                   <p className="text-sm font-medium">{name}</p>
                 </div>
-                <Button size="sm" variant="outline" className="mt-3 w-full">
-                  Générer en PDF
+                <Button size="sm" variant="outline" className="mt-3 w-full" disabled title="Bientôt disponible : génération PDF de modèles de documents non développée dans cet audit.">
+                  Générer en PDF · Bientôt disponible
                 </Button>
               </div>
             ))}

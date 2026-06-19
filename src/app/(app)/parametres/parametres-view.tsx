@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useFormState } from "react-dom";
 import {
   Upload,
   Sparkles,
@@ -31,7 +31,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ADVANCED_MODULES, type ModuleStatus } from "@/lib/constants";
 import type { Profile } from "@/lib/types";
-import { updateProfileAction } from "./actions";
+import type { UserSettings } from "@/lib/supabase/settings";
+import { updateProfileAction, updateUserSettingsAction } from "./actions";
 
 const ICONS: Record<string, LucideIcon> = { Sparkles, BarChart3, PenTool, ScanLine, Inbox };
 
@@ -42,17 +43,19 @@ const STATUS_META: Record<ModuleStatus, { label: string; variant: "neutral" | "i
 };
 
 const TEMPLATE_TOKENS = ["{{contact}}", "{{dossier}}", "{{liste_documents}}", "{{date}}", "{{signature}}"];
+const INITIAL_STATE = { ok: false, message: "" };
 
-function noop(e: React.FormEvent) {
-  e.preventDefault();
-}
-
-export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: boolean }) {
-  const [currency, setCurrency] = useState("EUR");
-  const [billingMentions, setBillingMentions] = useState("");
-  const [defaultRate, setDefaultRate] = useState("65");
-  const [portalEnabled, setPortalEnabled] = useState(true);
-  const [welcomeMessage, setWelcomeMessage] = useState("");
+export function ParametresView({
+  profile,
+  settings,
+  isDemo,
+}: {
+  profile: Profile;
+  settings: UserSettings;
+  isDemo: boolean;
+}) {
+  const [profileState, profileAction] = useFormState(updateProfileAction, INITIAL_STATE);
+  const [settingsState, settingsAction] = useFormState(updateUserSettingsAction, INITIAL_STATE);
 
   return (
     <div className="space-y-6">
@@ -74,7 +77,7 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
               <CardTitle>Profil</CardTitle>
             </CardHeader>
             <CardContent>
-              <form className="space-y-5" action={updateProfileAction}>
+              <form className="space-y-5" action={profileAction}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="full_name">Nom complet</Label>
@@ -110,6 +113,11 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
                   </Button>
                   {isDemo && <span className="text-xs text-muted-foreground">Connectez-vous pour enregistrer.</span>}
                 </div>
+                {profileState.message && (
+                  <p role="status" className={profileState.ok ? "text-sm text-emerald-600" : "text-sm text-destructive"}>
+                    {profileState.message}
+                  </p>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -153,21 +161,21 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
               <CardTitle>Facturation</CardTitle>
             </CardHeader>
             <CardContent>
-              <form className="space-y-5" onSubmit={noop}>
+              <form className="space-y-5" action={settingsAction}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="default-rate">Tarif horaire par défaut</Label>
                     <Input
                       id="default-rate"
+                      name="default_hourly_rate"
                       type="number"
                       min={0}
-                      value={defaultRate}
-                      onChange={(e) => setDefaultRate(e.target.value)}
+                      defaultValue={settings.default_hourly_rate}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="currency">Devise</Label>
-                    <Select value={currency} onValueChange={setCurrency}>
+                    <Select name="currency" defaultValue={settings.currency}>
                       <SelectTrigger id="currency">
                         <SelectValue />
                       </SelectTrigger>
@@ -183,9 +191,9 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
                   <Label htmlFor="mentions">Mentions de pré-facturation</Label>
                   <Textarea
                     id="mentions"
+                    name="pre_invoice_mentions"
                     placeholder="Mentions affichées sur vos pré-factures…"
-                    value={billingMentions}
-                    onChange={(e) => setBillingMentions(e.target.value)}
+                    defaultValue={settings.pre_invoice_mentions}
                   />
                 </div>
 
@@ -198,7 +206,12 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
                   </div>
                 </div>
 
-                <Button type="submit">Enregistrer</Button>
+                <Button type="submit" disabled={isDemo}>Enregistrer</Button>
+                {settingsState.message && (
+                  <p role="status" className={settingsState.ok ? "text-sm text-emerald-600" : "text-sm text-destructive"}>
+                    {settingsState.message}
+                  </p>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -211,7 +224,10 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
               <CardTitle>Portail client</CardTitle>
             </CardHeader>
             <CardContent>
-              <form className="space-y-5" onSubmit={noop}>
+              <form className="space-y-5" action={settingsAction}>
+                <input type="hidden" name="default_hourly_rate" value={settings.default_hourly_rate} />
+                <input type="hidden" name="currency" value={settings.currency} />
+                <input type="hidden" name="pre_invoice_mentions" value={settings.pre_invoice_mentions} />
                 <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-4">
                   <div>
                     <p className="text-sm font-medium">Activer le portail client</p>
@@ -221,9 +237,9 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
                   </div>
                   <input
                     type="checkbox"
+                    name="portal_enabled"
                     className="size-4 rounded border-input accent-primary"
-                    checked={portalEnabled}
-                    onChange={(e) => setPortalEnabled(e.target.checked)}
+                    defaultChecked={settings.portal_enabled}
                   />
                 </label>
 
@@ -231,9 +247,9 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
                   <Label htmlFor="welcome">Message d&apos;accueil par défaut</Label>
                   <Input
                     id="welcome"
+                    name="portal_welcome_message"
                     placeholder="Bienvenue dans votre espace client"
-                    value={welcomeMessage}
-                    onChange={(e) => setWelcomeMessage(e.target.value)}
+                    defaultValue={settings.portal_welcome_message}
                   />
                 </div>
 
@@ -242,7 +258,12 @@ export function ParametresView({ profile, isDemo }: { profile: Profile; isDemo: 
                   chaque client.
                 </p>
 
-                <Button type="submit">Enregistrer</Button>
+                <Button type="submit" disabled={isDemo}>Enregistrer</Button>
+                {settingsState.message && (
+                  <p role="status" className={settingsState.ok ? "text-sm text-emerald-600" : "text-sm text-destructive"}>
+                    {settingsState.message}
+                  </p>
+                )}
               </form>
             </CardContent>
           </Card>

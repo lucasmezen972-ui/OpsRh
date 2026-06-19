@@ -4,6 +4,7 @@ import type { DocumentStatus, DocumentType } from "@/lib/types";
 export interface DocRow {
   id: string;
   name: string;
+  file_url: string | null;
   document_type: DocumentType;
   client_name: string | null;
   case_title: string | null;
@@ -55,7 +56,7 @@ export async function getSupabaseDocumentBoard(): Promise<DocumentBoard | null> 
   const [{ data: documents, error }, { data: clients }, { data: cases }, { data: checklists }] = await Promise.all([
     supabase
       .from("documents")
-      .select("id,name,document_type,client_id,hr_case_id,status,created_at,expiration_date")
+      .select("id,name,file_url,document_type,client_id,hr_case_id,status,created_at,expiration_date")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("clients").select("id,name").eq("owner_id", user.id),
@@ -71,6 +72,7 @@ export async function getSupabaseDocumentBoard(): Promise<DocumentBoard | null> 
   const docRows: DocRow[] = docs.map((d) => ({
     id: d.id,
     name: d.name,
+    file_url: d.file_url,
     document_type: d.document_type as DocumentType,
     client_name: d.client_id ? clientName.get(d.client_id) ?? null : null,
     case_title: d.hr_case_id ? caseTitle.get(d.hr_case_id) ?? null : null,

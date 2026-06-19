@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 export function NewClientForm() {
+  const formAction = createClientAction as unknown as (formData: FormData) => void;
   return (
-    <form action={createClientAction} className="grid gap-4 lg:grid-cols-3">
+    <form action={formAction} className="grid gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         <Card>
           <CardHeader>

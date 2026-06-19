@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   CalendarCheck,
@@ -63,6 +63,22 @@ interface CaseOption {
 
 function TaskTable({ tasks }: { tasks: TaskRow[] }) {
   const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+
+  function query(task: TaskRow) {
+    const params = new URLSearchParams();
+    if (task.client_id) params.set("clientId", task.client_id);
+    if (task.hr_case_id) params.set("caseId", task.hr_case_id);
+    params.set("taskId", task.id);
+    return params.toString();
+  }
+
+  function run(action: () => Promise<{ ok: true } | { ok: false; message: string }>) {
+    startTransition(async () => {
+      const result = await action();
+      setMessage(result.ok ? "Action enregistrée." : result.message);
+    });
+  }
 
   if (tasks.length === 0) {
     return (
@@ -76,6 +92,7 @@ function TaskTable({ tasks }: { tasks: TaskRow[] }) {
 
   return (
     <Card className="overflow-hidden">
+      {message && <p role="status" className="px-4 pt-3 text-sm text-muted-foreground">{message}</p>}
       <Table>
         <TableHeader>
           <TableRow>
@@ -121,20 +138,20 @@ function TaskTable({ tasks }: { tasks: TaskRow[] }) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions rapides</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => startTransition(() => completeTaskAction(task.id))}>
+                      <DropdownMenuItem onClick={() => run(() => completeTaskAction(task.id))}>
                         <CheckCircle2 className="text-emerald-600" /> Terminer
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => startTransition(() => postponeTaskAction(task.id))}>
+                      <DropdownMenuItem onClick={() => run(() => postponeTaskAction(task.id))}>
                         <CalendarClock className="text-amber-600" /> Reporter (+1 j)
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/mails">
+                        <Link href={`/mails?${query(task)}&type=relance_documents`}>
                           <Mail className="text-violet-600" /> Générer une relance
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/temps">
+                        <Link href={`/temps?${query(task)}`}>
                           <Clock className="text-blue-600" /> Ajouter du temps
                         </Link>
                       </DropdownMenuItem>
@@ -148,7 +165,9 @@ function TaskTable({ tasks }: { tasks: TaskRow[] }) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => startTransition(() => deleteTaskAction(task.id))}
+                        onClick={() => {
+                          if (window.confirm("Supprimer cette tâche ?")) run(() => deleteTaskAction(task.id));
+                        }}
                       >
                         <Trash2 /> Supprimer
                       </DropdownMenuItem>
@@ -325,7 +344,7 @@ export function TasksView({
                     <p className="mt-0.5 text-xs text-muted-foreground">Demandé depuis {s.days} jours</p>
                   </div>
                   <Button asChild size="sm" variant="outline" className="shrink-0">
-                    <Link href="/mails">
+                    <Link href={`/mails?caseId=${s.case_id ?? ""}&type=relance_documents&document=${encodeURIComponent(s.name)}`}>
                       <Mail className="size-4" /> Générer une relance
                     </Link>
                   </Button>

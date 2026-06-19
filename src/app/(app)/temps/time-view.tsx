@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Clock, Euro, ListChecks, Ban, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -18,7 +18,12 @@ import { createTimeEntryAction, deleteTimeEntryAction } from "./actions";
 
 const selectClass =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const todayStr = new Date().toISOString().slice(0, 10);
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function TimeViewClient({
   view,
@@ -32,6 +37,12 @@ export function TimeViewClient({
   isDemo: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [todayStr, setTodayStr] = useState(localDateInputValue());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTodayStr(localDateInputValue());
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -54,7 +65,35 @@ export function TimeViewClient({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" action={createTimeEntryAction}>
+            <form
+              className="space-y-4"
+              action={createTimeEntryAction}
+              onSubmit={(event) => {
+                const data = new FormData(event.currentTarget);
+                const duration = Number(data.get("duration_minutes"));
+                const rate = Number(data.get("hourly_rate"));
+                if (!data.get("client_id")) {
+                  event.preventDefault();
+                  setError("Le client est obligatoire.");
+                } else if (!data.get("date")) {
+                  event.preventDefault();
+                  setError("La date est obligatoire.");
+                } else if (!Number.isFinite(duration) || duration <= 0) {
+                  event.preventDefault();
+                  setError("La durée doit être strictement supérieure à zéro.");
+                } else if (data.get("hourly_rate") && (!Number.isFinite(rate) || rate < 0)) {
+                  event.preventDefault();
+                  setError("Le tarif horaire doit être un nombre positif ou nul.");
+                } else {
+                  setError(null);
+                }
+              }}
+            >
+              {error && (
+                <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </p>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="client_id">Client</Label>
                 <select id="client_id" name="client_id" defaultValue="" required className={selectClass}>
@@ -84,11 +123,11 @@ export function TimeViewClient({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="date">Date</Label>
-                  <Input id="date" name="date" type="date" defaultValue={todayStr} />
+                  <Input id="date" name="date" type="date" value={todayStr} onChange={(event) => setTodayStr(event.target.value)} required />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="duration_minutes">Durée (min)</Label>
-                  <Input id="duration_minutes" name="duration_minutes" type="number" min={0} step={5} placeholder="90" required />
+                  <Input id="duration_minutes" name="duration_minutes" type="number" min={1} step={5} placeholder="90" required />
                 </div>
               </div>
 
@@ -154,7 +193,13 @@ export function TimeViewClient({
                             variant="ghost"
                             size="icon"
                             aria-label="Supprimer"
-                            onClick={() => startTransition(() => deleteTimeEntryAction(t.id))}
+                            onClick={() => {
+                              if (window.confirm("Supprimer cette entrée de temps ?")) {
+                                startTransition(() => {
+                                  void deleteTimeEntryAction(t.id);
+                                });
+                              }
+                            }}
                           >
                             <Trash2 className="size-4 text-destructive" />
                           </Button>

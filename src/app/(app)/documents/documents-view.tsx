@@ -1,8 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { FileText, FileWarning, CheckCircle2, AlertTriangle, Plus, Mail } from "lucide-react";
+import { FileText, FileWarning, CheckCircle2, AlertTriangle, Plus, Mail, Download, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -25,7 +25,13 @@ import {
 import { DOCUMENT_STATUS, DOCUMENT_TYPE } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import type { DocumentBoard } from "@/lib/supabase/documents";
-import { createDocumentAction, setChecklistItemStatusAction } from "./actions";
+import {
+  createDocumentAction,
+  deleteDocumentAction,
+  getDocumentDownloadUrlAction,
+  setChecklistItemStatusAction,
+  updateDocumentStatusAction,
+} from "./actions";
 
 const selectClass =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -42,6 +48,24 @@ export function DocumentsView({
   isDemo: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+
+  function runDocumentAction(action: () => Promise<{ ok: true } | { ok: false; message: string }>) {
+    startTransition(async () => {
+      const result = await action();
+      setMessage(result.ok ? "Action enregistrée." : result.message);
+    });
+  }
+
+  async function downloadDocument(id: string) {
+    const result = await getDocumentDownloadUrlAction(id);
+    if (result.ok) {
+      window.open(result.url, "_blank", "noopener,noreferrer");
+      setMessage("Lien de téléchargement ouvert.");
+    } else {
+      setMessage(result.message);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -62,7 +86,7 @@ export function DocumentsView({
                   : "Référencez un document et rattachez-le à un client ou un dossier."}
               </DialogDescription>
             </DialogHeader>
-            <form action={createDocumentAction} className="space-y-4">
+            <form action={createDocumentAction} className="space-y-4" encType="multipart/form-data">
               <div className="space-y-2">
                 <Label htmlFor="name">Nom du document</Label>
                 <Input id="name" name="name" placeholder="Ex. RIB - Clara Martin.pdf" required />
@@ -117,6 +141,11 @@ export function DocumentsView({
                 <Label htmlFor="expiration_date">Date d&apos;expiration (optionnel)</Label>
                 <Input id="expiration_date" name="expiration_date" type="date" />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="file">Fichier</Label>
+                <Input id="file" name="file" type="file" accept="application/pdf,image/png,image/jpeg" required={!isDemo} />
+                <p className="text-xs text-muted-foreground">PDF, PNG, JPG ou JPEG. Taille maximum : 10 Mo.</p>
+              </div>
               <Button type="submit" className="w-full">
                 Enregistrer le document
               </Button>
@@ -124,6 +153,11 @@ export function DocumentsView({
           </DialogContent>
         </Dialog>
       </PageHeader>
+      {message && (
+        <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
+          {message}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Total documents" value={board.total} icon={<FileText />} tone="info" />
@@ -153,6 +187,7 @@ export function DocumentsView({
                     <TableHead>Statut</TableHead>
                     <TableHead>Date d&apos;ajout</TableHead>
                     <TableHead>Expiration</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -170,6 +205,54 @@ export function DocumentsView({
                         <TableCell className="text-sm">{formatDate(doc.created_at)}</TableCell>
                         <TableCell className="text-sm">
                           {doc.expiration_date ? formatDate(doc.expiration_date) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Télécharger"
+                              disabled={!doc.file_url || isDemo || pending}
+                              title={!doc.file_url ? "Aucun fichier associé" : isDemo ? "Connectez-vous pour télécharger" : undefined}
+                              onClick={() => downloadDocument(doc.id)}
+                            >
+                              <Download className="size-4" />
+                            </Button>
+                            {!isDemo && (
+                              <>
+                                <select
+                                  aria-label={`Statut de ${doc.name}`}
+                                  defaultValue={doc.status}
+                                  disabled={pending}
+                                  className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+                                  onChange={(event) =>
+                                    runDocumentAction(() =>
+                                      updateDocumentStatusAction(doc.id, event.target.value as typeof doc.status)
+                                    )
+                                  }
+                                >
+                                  {Object.entries(DOCUMENT_STATUS).map(([value, meta]) => (
+                                    <option key={value} value={value}>
+                                      {meta.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Supprimer"
+                                  disabled={pending}
+                                  onClick={() => {
+                                    if (window.confirm("Supprimer ce document et son fichier associé ?")) {
+                                      runDocumentAction(() => deleteDocumentAction(doc.id));
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="size-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -199,7 +282,7 @@ export function DocumentsView({
                     </Badge>
                   </CardTitle>
                   <Button asChild size="sm" variant="outline">
-                    <Link href="/mails">
+                    <Link href={`/mails?clientId=${group.client_id}&type=relance_documents`}>
                       <Mail className="size-4" /> Générer une relance groupée
                     </Link>
                   </Button>
@@ -225,14 +308,22 @@ export function DocumentsView({
                                 size="sm"
                                 variant="outline"
                                 disabled={pending}
-                                onClick={() => startTransition(() => setChecklistItemStatusAction(item.id, "recu"))}
+                                onClick={() =>
+                                  startTransition(() => {
+                                    void setChecklistItemStatusAction(item.id, "recu");
+                                  })
+                                }
                               >
                                 Marquer reçu
                               </Button>
                               <Button
                                 size="sm"
                                 disabled={pending}
-                                onClick={() => startTransition(() => setChecklistItemStatusAction(item.id, "valide"))}
+                                onClick={() =>
+                                  startTransition(() => {
+                                    void setChecklistItemStatusAction(item.id, "valide");
+                                  })
+                                }
                               >
                                 Valider
                               </Button>

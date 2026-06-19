@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Calendar,
-  CheckCircle2,
   Clock,
   FileText,
   Flag,
@@ -35,6 +34,7 @@ import {
 import { getSupabaseCaseDetail, type CaseDetail } from "@/lib/supabase/details";
 import { CASE_STATUS, CASE_TYPE, DOCUMENT_STATUS, PRIORITY } from "@/lib/constants";
 import { formatDate, formatDuration, formatRelative } from "@/lib/utils";
+import { ChecklistActions } from "./checklist-actions";
 
 export default async function DossierDetailPage({ params }: { params: { id: string } }) {
   const result = await getSupabaseCaseDetail(params.id);
@@ -91,7 +91,7 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
         <StatusBadge label={status.label} tone={status.tone} />
         <StatusBadge label={priority.label} tone={priority.tone} />
         <Button asChild variant="outline">
-          <Link href="/mails">
+          <Link href={`/mails?clientId=${hrCase.client_id}&caseId=${hrCase.id}&type=relance_documents`}>
             <Send className="size-4" /> Générer une relance
           </Link>
         </Button>
@@ -165,17 +165,13 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
                               </div>
                               {item.comment && <p className="text-xs text-muted-foreground">{item.comment}</p>}
                             </div>
-                            <div className="flex shrink-0 flex-wrap gap-2">
-                              <Button variant="outline" size="sm">
-                                Relancer
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                Marquer reçu
-                              </Button>
-                              <Button size="sm">
-                                <CheckCircle2 className="size-4" /> Valider
-                              </Button>
-                            </div>
+                            <ChecklistActions
+                              itemId={item.id}
+                              clientId={hrCase.client_id}
+                              caseId={hrCase.id}
+                              documentName={item.name}
+                              isDemo={isDemo}
+                            />
                           </li>
                         );
                       })}

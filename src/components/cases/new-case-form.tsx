@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 const selectClass =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-export async function NewCaseForm() {
+export async function NewCaseForm({ defaultClientId = "" }: { defaultClientId?: string }) {
+  const formAction = createCaseAction as unknown as (formData: FormData) => void;
   const supabaseClients = await getSupabaseClientOptions();
   const isDemo = supabaseClients === null;
   const clientOptions = isDemo
@@ -20,7 +21,7 @@ export async function NewCaseForm() {
     : supabaseClients;
 
   return (
-    <form action={createCaseAction} className="grid gap-4 lg:grid-cols-3">
+    <form action={formAction} className="grid gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         <Card>
           <CardHeader>
@@ -36,7 +37,7 @@ export async function NewCaseForm() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="client_id">Client associé</Label>
-                <select id="client_id" name="client_id" required defaultValue="" className={selectClass}>
+                <select id="client_id" name="client_id" required defaultValue={defaultClientId} className={selectClass}>
                   <option value="" disabled>
                     {clientOptions.length ? "Sélectionner un client" : "Aucun client disponible"}
                   </option>

@@ -95,7 +95,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <StatusBadge label={status.label} tone={status.tone} />
         <Button asChild variant="outline">
-          <Link href="/dossiers/nouveau">
+          <Link href={`/dossiers/nouveau?clientId=${client.id}`}>
             <Plus className="size-4" /> Nouveau dossier
           </Link>
         </Button>
@@ -363,7 +363,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
                 <Button asChild variant="outline">
                   <Link href="/portail">Aperçu du portail</Link>
                 </Button>
-                <Button>Inviter au portail</Button>
+                <Button disabled title="Bientôt disponible : l'envoi de magic link sera connecté au portail client dédié.">
+                  Inviter au portail · Bientôt disponible
+                </Button>
               </div>
             </CardContent>
           </Card>

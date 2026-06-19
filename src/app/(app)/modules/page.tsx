@@ -53,12 +53,12 @@ export default function ModulesPage() {
               <CardContent className="flex flex-1 flex-col justify-between gap-4">
                 <p className="text-sm text-muted-foreground">{m.description}</p>
                 {m.status === "active" ? (
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full" disabled title="Configuration bientôt disponible.">
                     Configurer
                   </Button>
                 ) : (
-                  <Button className="w-full" disabled={m.status === "bientot"}>
-                    Activer
+                  <Button className="w-full" disabled title="Bientôt disponible : module premium non développé dans cette version.">
+                    {m.status === "bientot" ? "Bientôt disponible" : "Activer bientôt"}
                   </Button>
                 )}
               </CardContent>

@@ -53,6 +53,7 @@ export default async function DocumentsPage() {
       documents: documents.map((d) => ({
         id: d.id,
         name: d.name,
+        file_url: d.file_url,
         document_type: d.document_type,
         client_name: d.client_id ? getClient(d.client_id)?.name ?? null : null,
         case_title: d.hr_case_id ? getCase(d.hr_case_id)?.title ?? null : null,

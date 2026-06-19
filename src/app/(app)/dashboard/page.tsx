@@ -136,7 +136,7 @@ export default async function DashboardPage() {
                         </p>
                       </div>
                       <Button asChild size="sm" variant="outline">
-                        <Link href="/taches">Traiter</Link>
+                        <Link href={`/taches?taskId=${task.id}`}>Traiter</Link>
                       </Button>
                     </li>
                   );
