@@ -325,6 +325,9 @@ export interface AppNotification {
   user_id: string;
   client_id: string | null;
   hr_case_id: string | null;
+  href?: string | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
   title: string;
   message: string;
   type: string;

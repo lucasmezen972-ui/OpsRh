@@ -36,14 +36,17 @@ export async function createTimeEntryRecord(input: CreateTimeEntryInput): Promis
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez être connecté." };
 
   if (!clean(input.client_id)) return { ok: false, reason: "validation", message: "Le client est obligatoire." };
+  if (!clean(input.date)) return { ok: false, reason: "validation", message: "La date est obligatoire." };
   if (!input.duration_minutes || input.duration_minutes <= 0)
     return { ok: false, reason: "validation", message: "La durée doit être supérieure à 0." };
+  if (input.hourly_rate != null && input.hourly_rate < 0)
+    return { ok: false, reason: "validation", message: "Le tarif horaire ne peut pas être négatif." };
 
   const { error } = await supabase.from("time_entries").insert({
     owner_id: user.id,
     client_id: input.client_id,
     hr_case_id: clean(input.hr_case_id),
-    date: clean(input.date) ?? new Date().toISOString().slice(0, 10),
+    date: clean(input.date),
     duration_minutes: input.duration_minutes,
     description: clean(input.description),
     billable: input.billable,

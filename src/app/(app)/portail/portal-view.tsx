@@ -90,8 +90,8 @@ export function PortalView({ preview, isDemo }: { preview: PortalPreview; isDemo
                         <FileText className="size-4 text-muted-foreground" />
                         <span className="text-sm font-medium">{doc}</span>
                       </div>
-                      <Button size="sm" variant="outline">
-                        <Upload className="size-4" /> Déposer le document
+                      <Button size="sm" variant="outline" disabled title="Bientôt disponible : dépôt depuis l'espace client dédié.">
+                        <Upload className="size-4" /> Déposer · Bientôt disponible
                       </Button>
                     </div>
                   ))

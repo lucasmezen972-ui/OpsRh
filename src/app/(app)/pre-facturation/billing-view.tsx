@@ -29,16 +29,64 @@ const NEXT_STATUSES: PreInvoiceStatus[] = ["a_preparer", "a_verifier", "prete", 
 export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo: boolean }) {
   const [active, setActive] = useState<PreInvoiceRow | null>(null);
   const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
 
   const aPreparer = board.rows.filter((p) => p.status === "a_preparer").length;
   const aVerifier = board.rows.filter((p) => p.status === "a_verifier").length;
   const pretes = board.rows.filter((p) => p.status === "prete").length;
+
+  function downloadPreInvoicePdf(row: PreInvoiceRow) {
+    const fileName = `pre-facturation-${row.client_name ?? "client"}-${row.period_start}-${row.period_end}.pdf`
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .toLowerCase();
+    const lines = [
+      "Ops RH",
+      "Document de pre-facturation",
+      "",
+      `Client : ${row.client_name ?? "-"}`,
+      `Periode : ${formatDate(row.period_start)} -> ${formatDate(row.period_end)}`,
+      `Temps facturable : ${formatEuro(row.subtotal)}`,
+      `Prestations : ${formatEuro(row.total - row.subtotal)}`,
+      `Sous-total : ${formatEuro(row.subtotal)}`,
+      `Total : ${formatEuro(row.total)}`,
+      "",
+      "Notes :",
+      row.notes ?? "-",
+      "",
+      "Mention : ce document est un recapitulatif de pre-facturation et ne constitue pas une facture legale.",
+    ];
+    const pdf = buildSimplePdf(lines);
+    const url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMessage("PDF de pré-facturation téléchargé.");
+
+    if (!isDemo) {
+      startTransition(async () => {
+        const result = await updatePreInvoiceStatusAction(row.id, "exportee");
+        if (!result.ok) setMessage(result.message);
+        else setActive((current) => (current?.id === row.id ? { ...current, status: "exportee" } : current));
+      });
+    }
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader title="Pré-facturation" description="Que dois-je facturer ?">
         {isDemo && <Badge variant="warning">Mode démo</Badge>}
       </PageHeader>
+      {message && (
+        <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
+          {message}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Total pré-facturable ce mois" value={formatEuro(board.totalBillable)} icon={<Euro />} tone="success" />
@@ -87,7 +135,7 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
                           <Button variant="outline" size="sm" onClick={() => setActive(p)}>
                             Voir le détail
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" disabled={pending} onClick={() => downloadPreInvoicePdf(p)}>
                             <FileDown className="size-4" /> Exporter en PDF
                           </Button>
                         </div>
@@ -177,8 +225,9 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
                         disabled={pending || s === active.status}
                         onClick={() =>
                           startTransition(async () => {
-                            await updatePreInvoiceStatusAction(active.id, s);
-                            setActive({ ...active, status: s });
+                            const result = await updatePreInvoiceStatusAction(active.id, s);
+                            setMessage(result.ok ? "Statut mis à jour." : result.message);
+                            if (result.ok) setActive({ ...active, status: s });
                           })
                         }
                       >
@@ -189,7 +238,7 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
                 </div>
               )}
 
-              <Button variant="outline">
+              <Button variant="outline" disabled={pending} onClick={() => downloadPreInvoicePdf(active)}>
                 <FileDown className="size-4" /> Exporter en PDF
               </Button>
             </>
@@ -198,6 +247,41 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
       </Dialog>
     </div>
   );
+}
+
+function buildSimplePdf(lines: string[]) {
+  const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  const content = [
+    "BT",
+    "/F1 18 Tf",
+    "50 790 Td",
+    ...lines.flatMap((line, index) => {
+      const size = index === 0 ? "/F1 18 Tf" : index === 1 ? "/F1 14 Tf" : "/F1 11 Tf";
+      return [size, `(${escape(line)}) Tj`, "0 -18 Td"];
+    }),
+    "ET",
+  ].join("\n");
+  const objects = [
+    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
+    "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
+    `5 0 obj << /Length ${content.length} >> stream\n${content}\nendstream endobj`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const object of objects) {
+    offsets.push(pdf.length);
+    pdf += `${object}\n`;
+  }
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`)
+    .join("");
+  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return pdf;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

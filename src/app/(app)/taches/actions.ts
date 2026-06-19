@@ -30,20 +30,24 @@ export async function createTaskAction(formData: FormData) {
 
   const result = await createTaskRecord(input);
   if (!result.ok && result.reason === "unauthenticated") redirect("/login");
+  if (!result.ok) redirect(`/taches?error=${encodeURIComponent(result.message)}`);
   redirect("/taches");
 }
 
 export async function completeTaskAction(id: string) {
   const result = await completeTaskRecord(id);
   if (!result.ok && result.reason === "unauthenticated") redirect("/login");
+  return result;
 }
 
 export async function postponeTaskAction(id: string) {
   const result = await postponeTaskRecord(id, 1);
   if (!result.ok && result.reason === "unauthenticated") redirect("/login");
+  return result;
 }
 
 export async function deleteTaskAction(id: string) {
   const result = await deleteTaskRecord(id);
   if (!result.ok && result.reason === "unauthenticated") redirect("/login");
+  return result;
 }
