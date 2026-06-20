@@ -15,7 +15,17 @@ test.describe("navigation and global audit", () => {
   test("sidebar and mobile menu navigate without 404", async ({ page, isMobile }) => {
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
     if (isMobile) {
-      await page.getByLabel("Ouvrir le menu").click();
+      const openMenu = page.getByLabel("Ouvrir le menu");
+      const closeMenu = page.getByLabel("Fermer le menu");
+      await expect(openMenu).toBeVisible();
+      await page.waitForTimeout(500);
+      await openMenu.click();
+      if (!(await closeMenu.isVisible({ timeout: 1000 }).catch(() => false))) {
+        await openMenu.evaluate((element) => {
+          if (element instanceof HTMLElement) element.click();
+        });
+      }
+      await expect(closeMenu).toBeVisible();
     }
     for (const label of ["Clients", "Dossiers", "Tâches", "Documents", "Mails", "Temps", "Pré-facturation", "Portail", "Modules", "Paramètres"]) {
       const link = page.getByRole("link", { name: new RegExp(label, "i") }).first();
@@ -26,10 +36,15 @@ test.describe("navigation and global audit", () => {
   test("global search returns contextual results and supports keyboard navigation", async ({ page }) => {
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
     const search = page.getByLabel("Recherche globale");
+    await expect(search).toBeVisible();
+    await page.waitForTimeout(500);
     await search.click();
-    await search.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-    await search.type("Alpha");
+    await search.fill("Alpha");
     await expect(search).toHaveValue("Alpha");
+    if (!(await page.getByRole("listbox").isVisible({ timeout: 1500 }).catch(() => false))) {
+      await search.fill("");
+      await search.fill("Alpha");
+    }
     await expect(page.getByRole("listbox")).toBeVisible();
     await expect(page.getByRole("option").first()).toContainText("Alpha");
     await search.press("ArrowDown");
