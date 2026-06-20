@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import {
   analyzeDocumentContent,
   buildAiAssistantDraft,
+  buildReportingReport,
   parseInboundMessage,
   type AdvancedDocumentType,
   type AdvancedModuleOptions,
@@ -10,8 +11,10 @@ import {
   type DocumentAnalysisResult,
   type ImportSource,
   type ImportedMessageResult,
+  type ReportingData,
+  type ReportingReport,
 } from "@/lib/advanced-modules";
-import { getCases, getClients, getDocuments } from "@/lib/data";
+import { getCases, getClients, getDocuments, getTasks, getTimeEntries } from "@/lib/data";
 import { createClient, isSupabaseConfigured } from "./server";
 
 export type ModuleActionResult<T> =
@@ -396,4 +399,207 @@ export async function importInboundMessage(input: {
   revalidatePath("/modules/import");
   revalidatePath("/taches");
   return { ok: true, persisted: true, data: { ...parsed, createdTaskId } };
+}
+
+function demoReportingData(input: {
+  clientId?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  notes?: string | null;
+}): ReportingData {
+  const client = getClients().find((item) => item.id === input.clientId) ?? null;
+  const clientId = client?.id ?? null;
+  return {
+    client: client
+      ? {
+          id: client.id,
+          name: client.name,
+          main_contact_name: client.main_contact_name,
+          main_contact_email: client.main_contact_email,
+        }
+      : null,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    cases: getCases()
+      .filter((hrCase) => !clientId || hrCase.client_id === clientId)
+      .map((hrCase) => ({
+        id: hrCase.id,
+        title: hrCase.title,
+        status: hrCase.status,
+        priority: hrCase.priority,
+        due_date: hrCase.due_date,
+        updated_at: hrCase.updated_at,
+      })),
+    tasks: getTasks()
+      .filter((task) => !clientId || task.client_id === clientId)
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.due_date,
+        completed_at: task.completed_at,
+        created_at: task.created_at,
+      })),
+    documents: getDocuments()
+      .filter((document) => !clientId || document.client_id === clientId)
+      .map((document) => ({
+        id: document.id,
+        name: document.name,
+        status: document.status,
+        created_at: document.created_at,
+        expiration_date: document.expiration_date,
+      })),
+    timeEntries: getTimeEntries()
+      .filter((entry) => !clientId || entry.client_id === clientId)
+      .map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        duration_minutes: entry.duration_minutes,
+        billable: entry.billable,
+        hourly_rate: entry.hourly_rate,
+        description: entry.description,
+      })),
+    notes: clean(input.notes),
+  };
+}
+
+export async function generateReportingReport(input: {
+  clientId?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  notes?: string | null;
+}): Promise<ModuleActionResult<ReportingReport>> {
+  const periodStart = clean(input.periodStart);
+  const periodEnd = clean(input.periodEnd);
+  if (!periodStart || !periodEnd) {
+    return { ok: false, reason: "validation", message: "La période du rapport est obligatoire." };
+  }
+  if (periodEnd < periodStart) {
+    return { ok: false, reason: "validation", message: "La date de fin doit être après la date de début." };
+  }
+
+  const { supabase, user } = await ownerClient();
+  if (!supabase || !user) {
+    return {
+      ok: true,
+      data: buildReportingReport(demoReportingData({ ...input, periodStart, periodEnd })),
+      persisted: false,
+      message: "Rapport généré en mode démo.",
+    };
+  }
+
+  const clientId = clean(input.clientId);
+  const clientQuery = clientId
+    ? supabase.from("clients").select("id,name,main_contact_name,main_contact_email").eq("owner_id", user.id).eq("id", clientId).maybeSingle()
+    : Promise.resolve({ data: null, error: null });
+  const casesQuery = clientId
+    ? supabase.from("hr_cases").select("id,title,status,priority,due_date,updated_at").eq("owner_id", user.id).eq("client_id", clientId)
+    : supabase.from("hr_cases").select("id,title,status,priority,due_date,updated_at").eq("owner_id", user.id);
+  const tasksQuery = clientId
+    ? supabase.from("tasks").select("id,title,status,priority,due_date,completed_at,created_at").eq("owner_id", user.id).eq("client_id", clientId)
+    : supabase.from("tasks").select("id,title,status,priority,due_date,completed_at,created_at").eq("owner_id", user.id);
+  const documentsQuery = clientId
+    ? supabase.from("documents").select("id,name,status,created_at,expiration_date").eq("owner_id", user.id).eq("client_id", clientId)
+    : supabase.from("documents").select("id,name,status,created_at,expiration_date").eq("owner_id", user.id);
+  const timeQuery = clientId
+    ? supabase
+        .from("time_entries")
+        .select("id,date,duration_minutes,billable,hourly_rate,description")
+        .eq("owner_id", user.id)
+        .eq("client_id", clientId)
+        .gte("date", periodStart)
+        .lte("date", periodEnd)
+    : supabase
+        .from("time_entries")
+        .select("id,date,duration_minutes,billable,hourly_rate,description")
+        .eq("owner_id", user.id)
+        .gte("date", periodStart)
+        .lte("date", periodEnd);
+
+  const [{ data: client, error: clientError }, { data: cases, error: casesError }, { data: tasks, error: tasksError }, { data: documents, error: docsError }, { data: timeEntries, error: timeError }] =
+    await Promise.all([clientQuery, casesQuery, tasksQuery, documentsQuery, timeQuery]);
+
+  const error = clientError ?? casesError ?? tasksError ?? docsError ?? timeError;
+  if (error) return { ok: false, reason: "database", message: error.message };
+
+  const report = buildReportingReport({
+    client: client
+      ? {
+          id: client.id,
+          name: client.name,
+          main_contact_name: client.main_contact_name,
+          main_contact_email: client.main_contact_email,
+        }
+      : null,
+    periodStart,
+    periodEnd,
+    cases:
+      cases?.map((hrCase) => ({
+        id: hrCase.id,
+        title: hrCase.title,
+        status: hrCase.status,
+        priority: hrCase.priority,
+        due_date: hrCase.due_date,
+        updated_at: hrCase.updated_at,
+      })) ?? [],
+    tasks:
+      tasks?.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.due_date,
+        completed_at: task.completed_at,
+        created_at: task.created_at,
+      })) ?? [],
+    documents:
+      documents?.map((document) => ({
+        id: document.id,
+        name: document.name,
+        status: document.status,
+        created_at: document.created_at,
+        expiration_date: document.expiration_date,
+      })) ?? [],
+    timeEntries:
+      timeEntries?.map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        duration_minutes: Number(entry.duration_minutes ?? 0),
+        billable: Boolean(entry.billable),
+        hourly_rate: entry.hourly_rate === null ? null : Number(entry.hourly_rate),
+        description: entry.description,
+      })) ?? [],
+    notes: clean(input.notes),
+  });
+
+  const { error: reportError } = await supabase.from("reporting_reports").insert({
+    owner_id: user.id,
+    client_id: clientId,
+    period_start: periodStart,
+    period_end: periodEnd,
+    title: report.title,
+    summary: report.summary,
+    content: report.content,
+    metrics: report.metrics,
+    vigilance: report.vigilance,
+    recommendations: report.recommendations,
+  });
+  if (reportError) {
+    if (isMissingTableError(reportError)) {
+      return { ok: true, data: report, persisted: false, message: "Rapport généré, historique Supabase non installé." };
+    }
+    return { ok: false, reason: "database", message: reportError.message };
+  }
+
+  await supabase.from("activity_logs").insert({
+    owner_id: user.id,
+    actor_id: user.id,
+    client_id: clientId,
+    action_type: "rapport_genere",
+    description: `Rapport généré : ${report.title}`,
+  });
+
+  revalidatePath("/modules/reporting");
+  return { ok: true, data: report, persisted: true, message: "Rapport généré et enregistré." };
 }

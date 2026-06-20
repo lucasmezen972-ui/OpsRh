@@ -85,6 +85,74 @@ export type ImportedMessageResult = {
   suggestedAction: string;
 };
 
+export type ReportingCase = {
+  id: string;
+  title: string;
+  status: string;
+  priority: AdvancedPriority;
+  due_date: string | null;
+  updated_at: string;
+};
+
+export type ReportingTask = {
+  id: string;
+  title: string;
+  status: string;
+  priority: AdvancedPriority;
+  due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
+export type ReportingDocument = {
+  id: string;
+  name: string;
+  status: string;
+  created_at: string;
+  expiration_date: string | null;
+};
+
+export type ReportingTimeEntry = {
+  id: string;
+  date: string;
+  duration_minutes: number;
+  billable: boolean;
+  hourly_rate: number | null;
+  description: string | null;
+};
+
+export type ReportingData = {
+  client: AdvancedModuleClient | null;
+  periodStart: string;
+  periodEnd: string;
+  cases: ReportingCase[];
+  tasks: ReportingTask[];
+  documents: ReportingDocument[];
+  timeEntries: ReportingTimeEntry[];
+  notes: string | null;
+};
+
+export type ReportingReport = {
+  title: string;
+  periodLabel: string;
+  summary: string;
+  metrics: {
+    casesTotal: number;
+    casesOpen: number;
+    tasksTotal: number;
+    tasksDone: number;
+    tasksLate: number;
+    documentsTotal: number;
+    documentsMissing: number;
+    totalMinutes: number;
+    billableMinutes: number;
+    billableAmount: number;
+  };
+  vigilance: string[];
+  recommendations: string[];
+  content: string;
+};
+
 function byId<T extends { id: string }>(items: T[], id: string | null | undefined) {
   if (!id) return null;
   return items.find((item) => item.id === id) ?? null;
@@ -264,5 +332,117 @@ export function parseInboundMessage(input: {
     taskType,
     priority: urgent ? "haute" : "normale",
     suggestedAction: input.source === "email" ? "Créer une tâche depuis l'email" : "Créer une tâche depuis WhatsApp",
+  };
+}
+
+function formatPeriod(start: string, end: string) {
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  return `${startDate.toLocaleDateString("fr-FR")} - ${endDate.toLocaleDateString("fr-FR")}`;
+}
+
+function isWithinPeriod(date: string | null | undefined, start: string, end: string) {
+  if (!date) return false;
+  return date >= start && date <= end;
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values));
+}
+
+export function buildReportingReport(data: ReportingData): ReportingReport {
+  const openCaseStates = ["nouveau", "en_cours", "en_attente_client", "a_completer", "bloque", "a_valider"];
+  const missingDocStates = ["demande", "a_corriger", "expire"];
+  const today = new Date().toISOString().slice(0, 10);
+
+  const scopedTasks = data.tasks.filter(
+    (task) =>
+      isWithinPeriod(task.created_at.slice(0, 10), data.periodStart, data.periodEnd) ||
+      isWithinPeriod(task.completed_at?.slice(0, 10), data.periodStart, data.periodEnd) ||
+      isWithinPeriod(task.due_date, data.periodStart, data.periodEnd)
+  );
+  const scopedDocuments = data.documents.filter((document) =>
+    isWithinPeriod(document.created_at.slice(0, 10), data.periodStart, data.periodEnd)
+  );
+  const scopedTime = data.timeEntries.filter((entry) => isWithinPeriod(entry.date, data.periodStart, data.periodEnd));
+
+  const totalMinutes = scopedTime.reduce((sum, entry) => sum + Number(entry.duration_minutes ?? 0), 0);
+  const billableMinutes = scopedTime.filter((entry) => entry.billable).reduce((sum, entry) => sum + Number(entry.duration_minutes ?? 0), 0);
+  const billableAmount = scopedTime
+    .filter((entry) => entry.billable)
+    .reduce((sum, entry) => sum + (Number(entry.duration_minutes ?? 0) / 60) * Number(entry.hourly_rate ?? 0), 0);
+
+  const openCases = data.cases.filter((hrCase) => openCaseStates.includes(hrCase.status));
+  const doneTasks = scopedTasks.filter((task) => task.status === "termine");
+  const lateTasks = scopedTasks.filter((task) => task.status !== "termine" && task.due_date && task.due_date < today);
+  const missingDocuments = data.documents.filter((document) => missingDocStates.includes(document.status));
+  const blockedCases = data.cases.filter((hrCase) => hrCase.status === "bloque");
+
+  const vigilance = unique([
+    ...blockedCases.map((hrCase) => `Dossier bloqué : ${hrCase.title}`),
+    ...lateTasks.map((task) => `Tâche en retard : ${task.title}`),
+    ...missingDocuments.slice(0, 6).map((document) => `Document à suivre : ${document.name} (${document.status})`),
+  ]);
+
+  const recommendations = [
+    missingDocuments.length > 0 ? "Planifier une relance documents ciblée." : "Maintenir le rythme de validation documentaire.",
+    lateTasks.length > 0 ? "Reprioriser les tâches en retard avant la prochaine échéance client." : "Conserver le suivi hebdomadaire des tâches ouvertes.",
+    billableMinutes > 0 ? "Comparer le temps facturable avec les accords client avant pré-facturation." : "Vérifier si le mois contient du temps non saisi.",
+  ];
+
+  const clientName = data.client?.name ?? "Tous clients";
+  const periodLabel = formatPeriod(data.periodStart, data.periodEnd);
+  const title = `Rapport RH - ${clientName}`;
+  const summary = `${clientName} : ${openCases.length} dossier(s) ouvert(s), ${doneTasks.length}/${scopedTasks.length} tâche(s) terminée(s), ${Math.round(billableMinutes / 60 * 10) / 10}h facturable(s).`;
+
+  const content = [
+    `# ${title}`,
+    "",
+    `Période : ${periodLabel}`,
+    "",
+    "## Synthèse",
+    summary,
+    data.notes ? `\nNote : ${data.notes}` : null,
+    "",
+    "## Indicateurs",
+    `- Dossiers actifs : ${openCases.length}/${data.cases.length}`,
+    `- Tâches terminées : ${doneTasks.length}/${scopedTasks.length}`,
+    `- Tâches en retard : ${lateTasks.length}`,
+    `- Documents suivis : ${scopedDocuments.length} ajouté(s), ${missingDocuments.length} à suivre`,
+    `- Temps total : ${Math.round(totalMinutes / 60 * 10) / 10}h`,
+    `- Temps facturable : ${Math.round(billableMinutes / 60 * 10) / 10}h`,
+    `- Montant facturable estimé : ${Math.round(billableAmount)} EUR`,
+    "",
+    "## Dossiers",
+    data.cases.length > 0 ? data.cases.map((hrCase) => `- ${hrCase.title} (${hrCase.status}, ${hrCase.priority})`).join("\n") : "- Aucun dossier.",
+    "",
+    "## Points de vigilance",
+    vigilance.length > 0 ? vigilance.map((item) => `- ${item}`).join("\n") : "- Aucun point de vigilance majeur.",
+    "",
+    "## Recommandations",
+    recommendations.map((item) => `- ${item}`).join("\n"),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    title,
+    periodLabel,
+    summary,
+    metrics: {
+      casesTotal: data.cases.length,
+      casesOpen: openCases.length,
+      tasksTotal: scopedTasks.length,
+      tasksDone: doneTasks.length,
+      tasksLate: lateTasks.length,
+      documentsTotal: scopedDocuments.length,
+      documentsMissing: missingDocuments.length,
+      totalMinutes,
+      billableMinutes,
+      billableAmount,
+    },
+    vigilance,
+    recommendations,
+    content,
   };
 }

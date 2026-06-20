@@ -18,6 +18,7 @@ export const APP_ROUTES = [
   "/espace-client",
   "/modules",
   "/modules/ia",
+  "/modules/reporting",
   "/modules/signature",
   "/modules/analyse",
   "/modules/import",

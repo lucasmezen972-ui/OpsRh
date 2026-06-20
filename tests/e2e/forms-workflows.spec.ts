@@ -17,11 +17,17 @@ test.describe("functional workflows", () => {
   test("mails generate, copy, draft, sent state, and template creation feedback", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/mails?clientId=c1&caseId=d1&type=relance_documents&document=RIB", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "Mails & modèles" })).toBeVisible();
     await page.getByRole("button", { name: /^Générer$/ }).click();
     await expect(page.getByRole("status")).toContainText(/brouillon|généré/i);
-    await page.getByRole("button", { name: /Copier/i }).click();
+    const copyButton = page.getByRole("button", { name: /Copier/i });
+    await expect(copyButton).toBeEnabled();
+    await copyButton.click();
     await expect(page.getByRole("status")).toContainText(/copié|Impossible/i);
-    await page.getByRole("button", { name: /Marquer comme envoyé/i }).click();
+    const sentButton = page.getByRole("button", { name: /Marquer comme envoyé/i });
+    await expect(sentButton).toBeEnabled();
+    await sentButton.click();
     await expect(page.getByRole("status")).toContainText(/envoyé|Générez/i);
     await page.getByRole("button", { name: /Nouveau modèle/i }).click();
     await page.getByLabel("Titre").fill("Relance test");
@@ -67,7 +73,7 @@ test.describe("functional workflows", () => {
 
   test("premium and unavailable buttons are disabled with clear text", async ({ page }) => {
     await page.goto("/modules", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("button", { name: /Bientôt disponible|Activer bientôt|Configurer/i }).first()).toBeDisabled();
+    await expect(page.getByRole("link", { name: "Ouvrir" })).toHaveCount(5);
     await page.goto("/portail", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("button", { name: /Déposer.*Bientôt disponible/i }).first()).toBeDisabled();
   });

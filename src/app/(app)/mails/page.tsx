@@ -221,7 +221,7 @@ export default function MailsPage() {
           ...current,
         ]);
         setMessage("Mail généré et enregistré en brouillon.");
-      } else if (result.reason === "demo_mode") {
+      } else if (result.reason === "demo_mode" || result.reason === "unauthenticated") {
         const id = `demo-${Date.now()}`;
         setLastGeneratedId(id);
         setGenerated((current) => [
@@ -285,7 +285,7 @@ export default function MailsPage() {
     setMessage("Création du modèle en cours...");
     startTransition(async () => {
       const result = await createEmailTemplateAction({ title, type: tplType, subject: tplSubject, body: tplBody, variables });
-      if (result.ok || result.reason === "demo_mode") {
+      if (result.ok || result.reason === "demo_mode" || result.reason === "unauthenticated") {
         setTemplateList((current) => [
           { id: result.ok ? result.id ?? `tpl-${Date.now()}` : `demo-tpl-${Date.now()}`, owner_id: "", title, type: tplType, subject: tplSubject, body: tplBody, variables, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           ...current,
