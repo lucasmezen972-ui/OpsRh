@@ -7,6 +7,7 @@ import {
   Blocks,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,9 @@ export default function ModulesPage() {
               </CardHeader>
               <CardContent className="flex flex-1 flex-col justify-between gap-4">
                 <p className="text-sm text-muted-foreground">{m.description}</p>
-                {m.status === "active" ? (
-                  <Button variant="outline" className="w-full" disabled title="Configuration bientôt disponible.">
-                    Configurer
+                {m.status === "active" && m.href ? (
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href={m.href}>Ouvrir</Link>
                   </Button>
                 ) : (
                   <Button className="w-full" disabled title="Bientôt disponible : module premium non développé dans cette version.">

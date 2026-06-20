@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { FileText, FileWarning, CheckCircle2, AlertTriangle, Plus, Mail, Download, Trash2 } from "lucide-react";
+import { FileText, FileWarning, CheckCircle2, AlertTriangle, Plus, Mail, Download, Trash2, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -217,6 +217,11 @@ export function DocumentsView({
                               onClick={() => downloadDocument(doc.id)}
                             >
                               <Download className="size-4" />
+                            </Button>
+                            <Button asChild variant="ghost" size="icon" aria-label="Analyser" title="Analyser automatiquement">
+                              <Link href={`/modules/analyse?documentId=${doc.id}`}>
+                                <ScanLine className="size-4" />
+                              </Link>
                             </Button>
                             {!isDemo && (
                               <>
