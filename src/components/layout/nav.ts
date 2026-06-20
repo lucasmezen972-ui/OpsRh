@@ -9,6 +9,7 @@ import {
   Receipt,
   Globe,
   Blocks,
+  BarChart3,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ export const MAIN_NAV: NavItem[] = [
 
 // Sections secondaires, volontairement séparées du cœur.
 export const SECONDARY_NAV: NavItem[] = [
+  { label: "Reporting", href: "/reporting", icon: BarChart3, question: "Quelle est mon activité ce mois-ci ?" },
   { label: "Modules", href: "/modules", icon: Blocks, question: "Quelles extensions activer ?" },
   { label: "Paramètres", href: "/parametres", icon: Settings, question: "Comment configurer Ops RH ?" },
 ];
