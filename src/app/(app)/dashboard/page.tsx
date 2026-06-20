@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { dashboardStats, getActivity, getCase, getClient, todayTasks, urgentAlerts } from "@/lib/data";
 import { getSupabaseDashboard, type DashboardData } from "@/lib/supabase/dashboard";
+import { getOnboardingStatus } from "@/lib/supabase/onboarding";
+import { OnboardingCard } from "@/components/shared/onboarding-card";
 import { PRIORITY, TASK_TYPE } from "@/lib/constants";
 import type { Priority, TaskType } from "@/lib/types";
 import { formatDuration, formatEuro, formatRelative, isOverdue } from "@/lib/utils";
@@ -38,7 +40,7 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default async function DashboardPage() {
-  const supabaseData = await getSupabaseDashboard();
+  const [supabaseData, onboarding] = await Promise.all([getSupabaseDashboard(), getOnboardingStatus()]);
   const isDemo = supabaseData === null;
 
   const data: DashboardData = supabaseData ?? {
@@ -83,6 +85,8 @@ export default async function DashboardPage() {
           <Link href="/dossiers/nouveau">Nouveau dossier</Link>
         </Button>
       </PageHeader>
+
+      {onboarding && !onboarding.complete && <OnboardingCard status={onboarding} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
         <StatCard label="Tâches du jour" value={stats.todayTasks} icon={<CalendarCheck />} tone="info" href="/taches" />
