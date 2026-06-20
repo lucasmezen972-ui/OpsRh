@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createEmailTemplate, markGeneratedEmailSent, saveGeneratedEmail } from "@/lib/supabase/email-mutations";
 
 export async function saveGeneratedEmailAction(input: {
@@ -10,15 +9,11 @@ export async function saveGeneratedEmailAction(input: {
   body: string;
   status?: "brouillon" | "envoye";
 }) {
-  const result = await saveGeneratedEmail(input);
-  if (!result.ok && result.reason === "unauthenticated") redirect("/login");
-  return result;
+  return saveGeneratedEmail(input);
 }
 
 export async function markGeneratedEmailSentAction(id: string) {
-  const result = await markGeneratedEmailSent(id);
-  if (!result.ok && result.reason === "unauthenticated") redirect("/login");
-  return result;
+  return markGeneratedEmailSent(id);
 }
 
 export async function createEmailTemplateAction(input: {
@@ -28,7 +23,5 @@ export async function createEmailTemplateAction(input: {
   body: string;
   variables?: string[];
 }) {
-  const result = await createEmailTemplate(input);
-  if (!result.ok && result.reason === "unauthenticated") redirect("/login");
-  return result;
+  return createEmailTemplate(input);
 }

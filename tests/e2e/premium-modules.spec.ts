@@ -6,11 +6,20 @@ test.describe("advanced modules", () => {
     const errors = await collectPageErrors(page);
     await page.goto("/modules", { waitUntil: "domcontentloaded" });
     await expectNo404(page);
-    for (const name of ["Assistant IA", "Signature électronique", "Analyse automatique des documents", "Import WhatsApp / Email"]) {
-      await expect(page.getByText(name)).toBeVisible();
+    for (const name of ["Assistant IA", "Reporting", "Signature électronique", "Analyse automatique des documents", "Import WhatsApp / Email"]) {
+      await expect(page.getByRole("main").getByText(name, { exact: true })).toBeVisible();
     }
-    await expect(page.getByRole("link", { name: "Ouvrir" })).toHaveCount(4);
+    await expect(page.getByRole("link", { name: "Ouvrir" })).toHaveCount(5);
     await errors.assertClean();
+  });
+
+  test("reporting generates a client report and exposes downloadable content", async ({ page }) => {
+    await page.goto("/modules/reporting", { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Note interne à inclure").fill("Mettre en avant les points de vigilance.");
+    await page.getByRole("button", { name: "Générer le rapport" }).click();
+    await expect(page.getByText("Rapport généré").first()).toBeVisible();
+    await expect(page.getByLabel("Contenu du rapport")).toContainText("Points de vigilance");
+    await expect(page.getByRole("button", { name: "Télécharger" })).toBeEnabled();
   });
 
   test("AI assistant generates an editable draft", async ({ page }) => {

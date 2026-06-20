@@ -4,6 +4,7 @@ import type { AiRequestKind, ImportSource } from "@/lib/advanced-modules";
 import {
   analyzeDocument,
   createSignatureRequest,
+  generateReportingReport,
   importInboundMessage,
   runAiAssistant,
   signSignatureRequest,
@@ -59,5 +60,14 @@ export async function importInboundMessageAction(formData: FormData) {
     clientId: value(formData, "client_id"),
     caseId: value(formData, "hr_case_id"),
     createTask: value(formData, "create_task") === "on",
+  });
+}
+
+export async function generateReportingReportAction(formData: FormData) {
+  return generateReportingReport({
+    clientId: value(formData, "client_id"),
+    periodStart: value(formData, "period_start"),
+    periodEnd: value(formData, "period_end"),
+    notes: value(formData, "notes"),
   });
 }
