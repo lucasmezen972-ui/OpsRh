@@ -9,6 +9,7 @@ import {
   History,
   Mail,
   MessageSquare,
+  Pencil,
   Send,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -90,6 +91,11 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
         {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <StatusBadge label={status.label} tone={status.tone} />
         <StatusBadge label={priority.label} tone={priority.tone} />
+        <Button asChild variant="outline">
+          <Link href={`/dossiers/${hrCase.id}/modifier`}>
+            <Pencil className="size-4" /> Modifier
+          </Link>
+        </Button>
         <Button asChild variant="outline">
           <Link href={`/mails?clientId=${hrCase.client_id}&caseId=${hrCase.id}&type=relance_documents`}>
             <Send className="size-4" /> Générer une relance

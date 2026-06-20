@@ -101,3 +101,70 @@ export async function createCaseRecord(input: CreateCaseInput): Promise<CreateCa
 
   return { ok: true, caseId: hrCase.id };
 }
+
+export type UpdateCaseInput = {
+  title: string;
+  person_name?: string | null;
+  case_type?: CaseType;
+  description?: string | null;
+  status?: CaseStatus;
+  priority?: Priority;
+  due_date?: string | null;
+  internal_notes?: string | null;
+};
+
+export async function updateCaseRecord(caseId: string, input: UpdateCaseInput): Promise<CreateCaseResult> {
+  const supabase = createClient();
+
+  if (!isSupabaseConfigured || !supabase) {
+    return { ok: false, reason: "demo_mode", message: "Supabase n'est pas configuré. Modification non enregistrée." };
+  }
+
+  const title = clean(input.title);
+  if (!title) return { ok: false, reason: "validation", message: "Le titre du dossier est obligatoire." };
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return { ok: false, reason: "unauthenticated", message: "Vous devez être connecté pour modifier un dossier." };
+  }
+
+  const { data: hrCase, error: caseError } = await supabase
+    .from("hr_cases")
+    .update({
+      title,
+      person_name: clean(input.person_name),
+      case_type: input.case_type ?? "autre",
+      description: clean(input.description),
+      status: input.status ?? "nouveau",
+      priority: input.priority ?? "normale",
+      due_date: clean(input.due_date),
+      internal_notes: clean(input.internal_notes),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", caseId)
+    .eq("owner_id", user.id)
+    .select("id, client_id")
+    .single();
+
+  if (caseError || !hrCase) {
+    return { ok: false, reason: "database", message: caseError?.message ?? "Impossible de modifier le dossier." };
+  }
+
+  await supabase.from("activity_logs").insert({
+    owner_id: user.id,
+    client_id: hrCase.client_id,
+    hr_case_id: hrCase.id,
+    action_type: "dossier_maj",
+    description: `Dossier mis à jour : ${title}`,
+    actor_id: user.id,
+  });
+
+  revalidatePath("/dossiers");
+  revalidatePath(`/dossiers/${hrCase.id}`);
+  revalidatePath("/dashboard");
+
+  return { ok: true, caseId: hrCase.id };
+}

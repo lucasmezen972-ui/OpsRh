@@ -9,6 +9,7 @@ import {
   Calendar,
   FileText,
   Plus,
+  Pencil,
   Globe,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -94,6 +95,11 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       <PageHeader title={client.name} description={client.sector ?? undefined}>
         {isDemo && <Badge variant="warning">Mode démo</Badge>}
         <StatusBadge label={status.label} tone={status.tone} />
+        <Button asChild variant="outline">
+          <Link href={`/clients/${client.id}/modifier`}>
+            <Pencil className="size-4" /> Modifier
+          </Link>
+        </Button>
         <Button asChild variant="outline">
           <Link href={`/dossiers/nouveau?clientId=${client.id}`}>
             <Plus className="size-4" /> Nouveau dossier
