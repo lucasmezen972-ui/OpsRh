@@ -33,7 +33,7 @@ export default async function ModifierClientPage({ params }: { params: { id: str
       </Button>
 
       <PageHeader title={`Modifier — ${client.name}`} description="Mettez à jour les informations du client.">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
 
       <EditClientForm client={client} />

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { isAuthenticated } from "@/lib/supabase/session";
@@ -42,7 +43,9 @@ export default async function LoginPage() {
       {/* Colonne formulaire */}
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-8">
-          <AuthForm />
+          <Suspense>
+            <AuthForm />
+          </Suspense>
         </Card>
       </div>
     </div>

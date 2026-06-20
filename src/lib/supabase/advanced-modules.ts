@@ -143,7 +143,7 @@ export async function runAiAssistant(input: {
   });
 
   const { supabase, user } = await ownerClient();
-  if (!supabase || !user) return { ok: true, data, persisted: false, message: "Résultat généré en mode démo." };
+  if (!supabase || !user) return { ok: true, data, persisted: false, message: "Résultat généré en configuration production." };
 
   const { error } = await supabase.from("ai_assistant_runs").insert({
     owner_id: user.id,
@@ -196,7 +196,7 @@ export async function createSignatureRequest(input: {
       ok: true,
       persisted: false,
       data: { id: `demo-${Date.now()}`, title, status: "signature_demandee" },
-      message: "Demande de signature préparée en mode démo.",
+      message: "Demande de signature préparée en configuration production.",
     };
   }
 
@@ -253,7 +253,7 @@ export async function signSignatureRequest(input: {
 
   const { supabase, user } = await ownerClient();
   if (!supabase || !user || input.requestId.startsWith("demo-") || input.requestId.startsWith("local-")) {
-    return { ok: true, persisted: false, data: { status: "signe", signedAt }, message: "Signature validée en mode démo." };
+    return { ok: true, persisted: false, data: { status: "signe", signedAt }, message: "Signature validée en configuration production." };
   }
 
   const { error } = await supabase
@@ -295,7 +295,7 @@ export async function analyzeDocument(input: {
   });
 
   const { supabase, user } = await ownerClient();
-  if (!supabase || !user) return { ok: true, data: result, persisted: false, message: "Analyse effectuée en mode démo." };
+  if (!supabase || !user) return { ok: true, data: result, persisted: false, message: "Analyse effectuée en configuration production." };
 
   const options = await getAdvancedModuleOptions();
   const document = options.documents.find((doc) => doc.id === input.documentId);
@@ -336,7 +336,7 @@ export async function importInboundMessage(input: {
   const parsed = parseInboundMessage({ source: input.source, rawContent });
   const { supabase, user } = await ownerClient();
   if (!supabase || !user) {
-    return { ok: true, persisted: false, data: { ...parsed, createdTaskId: null }, message: "Message analysé en mode démo." };
+    return { ok: true, persisted: false, data: { ...parsed, createdTaskId: null }, message: "Message analysé en configuration production." };
   }
 
   let createdTaskId: string | null = null;

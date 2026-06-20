@@ -1,133 +1,88 @@
 # Ops RH
 
-**Le cockpit simple et professionnel d'une freelance RH.**
+Ops RH est une application SaaS pour freelances RH, consultants RH indépendants et petits cabinets RH.
 
-Ops RH aide les freelances RH à piloter leurs clients, leurs dossiers, leurs documents, leurs relances et leur pré-facturation depuis une seule web app.
+Contact officiel : `contact@tradikom.com`
 
-C'est un outil de **pilotage opérationnel** pour freelance / petite structure RH qui accompagne des TPE/PME — pas un SIRH complet pour grandes entreprises.
+## Stack
 
----
+- Next.js 14 App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Supabase Auth, PostgreSQL, Storage et RLS
+- Stripe Checkout, Billing Portal et webhooks
+- Resend pour les e-mails transactionnels
+- Playwright pour les tests E2E
 
-## ✨ Fonctionnalités (v1)
-
-Cœur principal :
-
-| Page | Question à laquelle elle répond |
-| --- | --- |
-| **Dashboard** « À traiter aujourd'hui » | Que dois-je traiter aujourd'hui ? |
-| **Clients** | Quels clients je gère ? |
-| **Dossiers RH** | Où en sont mes dossiers ? |
-| **Tâches & relances** | Que dois-je faire ? |
-| **Documents & checklists** | Qu'est-ce qui manque ? |
-| **Mails & modèles** | Que puis-je générer ? |
-| **Temps passé** | Combien de temps ai-je travaillé ? |
-| **Pré-facturation** | Que dois-je facturer ? |
-| **Portail client** | Que voit mon client ? |
-
-Plus : centre de notifications, historique d'activité, paramètres, et une section **Modules** qui prépare (sans les imposer) les fonctions avancées : IA, reporting, signature électronique, analyse automatique des documents, import WhatsApp/Email.
-
-## 🧱 Stack
-
-- **Next.js 14** (App Router) + **React 18** + **TypeScript**
-- **Tailwind CSS** + composants **shadcn/ui** (Radix UI)
-- **Supabase** : PostgreSQL, Auth, Storage, Row Level Security
-- Déploiement **Vercel**
-- Prévu : Stripe (paiement), Resend (emails), OpenAI (module IA), génération PDF côté serveur
-
-## 🚀 Démarrage
+## Installation locale
 
 ```bash
-npm install
-cp .env.example .env.local   # puis renseignez vos clés Supabase
-npm run dev
+npm ci
+cp .env.example .env.local
+npm run typecheck
+npm run lint
+npm run build
+npm run test:e2e
 ```
 
-Ouvrez http://localhost:3000 — vous arrivez sur `/login`, puis le dashboard.
+## Variables d'environnement
 
-> **Mode démo** : tant qu'aucun projet Supabase n'est connecté, l'app fonctionne
-> avec un jeu de **données d'exemple** (clients *Alpha Services* et *Caraïbes
-> Distribution*, dossiers, tâches, documents…). Toute l'interface est navigable
-> immédiatement.
+Voir `.env.example`.
 
-## 🗄️ Base de données Supabase
+Les secrets suivants restent uniquement côté serveur :
 
-Les migrations SQL se trouvent dans [`supabase/migrations`](./supabase/migrations) :
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
 
-- `0001_init.sql` — types énumérés, 19 tables, contraintes, trigger de création de profil.
-- `0002_rls.sql` — Row Level Security (isolation stricte entre freelances, portail client cloisonné, notes internes jamais exposées).
-- `supabase/seed.sql` — données de démonstration.
+## Supabase
 
-Application via la **CLI Supabase** :
+Appliquer les migrations dans `supabase/migrations`. La migration production ajoute les organisations, membres, abonnements Stripe, buckets privés et politiques RLS multi-tenant.
 
-```bash
-supabase db push          # applique les migrations
-psql "$DATABASE_URL" -f supabase/seed.sql   # (optionnel) seed démo
-```
+Documentation : `SUPABASE_SETUP.md`.
 
-ou collez le contenu des fichiers dans le **SQL Editor** du dashboard Supabase.
+## Stripe
 
-### Modèle de données (résumé)
+Produit recommandé : `Ops RH Pro`.
 
-`profiles · clients · client_contacts · hr_cases · tasks · documents ·
-document_checklists · checklist_items · email_templates · generated_emails ·
-document_templates · generated_documents · time_entries · billing_settings ·
-pre_invoices · client_requests · comments · activity_logs · notifications`
+Créer deux Price ID, mensuel et annuel, puis configurer :
 
-## 🔒 Sécurité & confidentialité
+- `STRIPE_PRICE_MONTHLY_ID`
+- `STRIPE_PRICE_YEARLY_ID`
 
-- Authentification Supabase Auth.
-- **RLS** activée sur toutes les tables : chaque freelance ne voit que ses données.
-- Portail client cloisonné via `client_contacts.portal_access` + correspondance email.
-- Les **notes internes** (`hr_cases.internal_notes`, commentaires `internal`) ne sont jamais exposées au portail client.
-- Le client ne voit que les données de **son** entreprise.
+Documentation : `STRIPE_SETUP.md`.
 
-## 🏗️ Architecture du code
+## E-mails
 
-```
-src/
-├── app/
-│   ├── (app)/              # espace freelance (sidebar + topbar)
-│   │   ├── dashboard, clients, dossiers, taches, documents,
-│   │   │   mails, temps, pre-facturation, portail, modules, parametres
-│   ├── login/              # authentification
-│   └── layout.tsx, globals.css
-├── components/
-│   ├── ui/                 # primitives shadcn/ui
-│   ├── shared/             # PageHeader, StatCard, StatusBadge, EmptyState
-│   └── layout/             # Sidebar, Topbar, Notifications
-└── lib/
-    ├── types.ts            # types métier (alignés sur le schéma SQL)
-    ├── constants.ts        # libellés + couleurs des statuts/priorités
-    ├── data.ts             # couche d'accès (à brancher sur Supabase)
-    ├── sample-data.ts      # données de démonstration
-    ├── utils.ts            # helpers de formatage (dates, €, durées)
-    └── supabase/           # clients browser/server
-```
+Tous les e-mails utilisent :
 
-**Couche de données.** Aujourd'hui `src/lib/data.ts` lit des données en mémoire.
-Pour passer en production, remplacez chaque fonction par sa requête Supabase
-équivalente — les composants UI n'ont pas besoin d'être modifiés.
+- From : `Ops RH <contact@tradikom.com>`
+- Reply-To : `contact@tradikom.com`
 
-## ☁️ Déploiement sur Vercel
+Documentation : `EMAIL_SETUP.md`.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/lucasmezen972-ui/OpsRh)
+## Déploiement
 
-1. Cliquez sur le bouton ci‑dessus (ou **vercel.com/new** → import `lucasmezen972-ui/OpsRh`).
-2. Framework **Next.js** détecté automatiquement — laissez les réglages par défaut.
-3. **Deploy**. Aucune variable d'environnement n'est requise : les identifiants
-   Supabase publics (URL + clé `anon`) sont fournis par défaut dans le code
-   (`src/lib/supabase/config.ts`) et restent surchargeables via
-   `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Une fois l'URL générée, ajoutez‑la dans **Supabase → Authentication → URL
-   Configuration** (Site URL + Redirect URLs) pour activer la connexion.
+Déployer sur Vercel après configuration des variables Supabase, Stripe, Resend et contact.
 
-> Compte de démonstration connecté : **demo@opsrh.fr** / **demo1234**.
-> Sans connexion, l'app reste explorable en **mode démo** (données fictives).
+Checklist : `DEPLOYMENT_CHECKLIST.md`.
 
-## 🗺️ Roadmap
+## Sécurité
 
-1. ✅ Cœur fonctionnel (v1, interface complète + schéma + RLS)
-2. Branchement complet sur Supabase (CRUD réel, Storage, Auth)
-3. Génération PDF (comptes rendus, synthèses, pré-factures)
-4. Notifications email (Resend)
-5. Modules avancés : IA, reporting, signature, analyse documents, import WhatsApp/Email
+- Pas de clé Supabase codée en dur.
+- Pas de clé Stripe secrète exposée au navigateur.
+- Webhook Stripe signé et idempotent.
+- Données métier isolées par `organization_id`.
+- Buckets Storage privés.
+- Modules avancés non commercialisés désactivés.
+
+## Documents de suivi
+
+- `PRODUCTION_AUDIT.md`
+- `QA_REPORT.md`
+- `SUPABASE_SETUP.md`
+- `STRIPE_SETUP.md`
+- `EMAIL_SETUP.md`
+- `DEPLOYMENT_CHECKLIST.md`

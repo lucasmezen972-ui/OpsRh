@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { login, signup, type AuthResult } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,12 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export function AuthForm() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+export function AuthForm({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const action = mode === "login" ? login : signup;
   const [state, formAction] = useFormState<AuthResult, FormData>(action, undefined);
+  const next = searchParams.get("next") ?? "";
 
   return (
     <div className="w-full">
@@ -43,6 +46,7 @@ export function AuthForm() {
       </div>
 
       <form action={formAction} className="space-y-4">
+        {mode === "login" && next && <input type="hidden" name="next" value={next} />}
         {mode === "signup" && (
           <>
             <div className="space-y-2">
@@ -63,7 +67,6 @@ export function AuthForm() {
             type="email"
             placeholder="vous@exemple.fr"
             required
-            defaultValue={mode === "login" ? "demo@opsrh.fr" : ""}
           />
         </div>
         <div className="space-y-2">
@@ -74,7 +77,6 @@ export function AuthForm() {
             type="password"
             placeholder="••••••••"
             required
-            defaultValue={mode === "login" ? "demo1234" : ""}
           />
         </div>
 
@@ -102,11 +104,8 @@ export function AuthForm() {
       </p>
 
       <div className="mt-4 space-y-2 border-t pt-4 text-center">
-        <p className="text-xs text-muted-foreground">
-          Démo connectée : <strong>demo@opsrh.fr</strong> / <strong>demo1234</strong>
-        </p>
-        <Link href="/dashboard" className="text-xs font-medium text-primary hover:underline">
-          Ou explorer en mode démo (sans connexion) →
+        <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+          Mot de passe oublié ?
         </Link>
       </div>
     </div>

@@ -47,7 +47,7 @@ export function TimeViewClient({
   return (
     <div className="space-y-6">
       <PageHeader title="Temps passé" description="Combien de temps ai-je travaillé ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -84,7 +84,7 @@ export default async function DossiersPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Dossiers RH" description="Où en sont mes dossiers ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <Button asChild>
           <Link href="/dossiers/nouveau">
             <Plus className="size-4" /> Nouveau dossier

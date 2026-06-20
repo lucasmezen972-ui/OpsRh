@@ -10,6 +10,7 @@ import {
   Globe,
   Blocks,
   BarChart3,
+  CreditCard,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -38,5 +39,6 @@ export const MAIN_NAV: NavItem[] = [
 export const SECONDARY_NAV: NavItem[] = [
   { label: "Reporting", href: "/reporting", icon: BarChart3, question: "Quelle est mon activité ce mois-ci ?" },
   { label: "Modules", href: "/modules", icon: Blocks, question: "Quelles extensions activer ?" },
+  { label: "Abonnement", href: "/abonnement", icon: CreditCard, question: "Quel est mon accès Ops RH ?" },
   { label: "Paramètres", href: "/parametres", icon: Settings, question: "Comment configurer Ops RH ?" },
 ];

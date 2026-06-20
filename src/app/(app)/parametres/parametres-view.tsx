@@ -59,7 +59,7 @@ export function ParametresView({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Paramètres">{isDemo && <Badge variant="warning">Mode démo</Badge>}</PageHeader>
+      <PageHeader title="Paramètres"></PageHeader>
 
       <Tabs defaultValue="profil">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">

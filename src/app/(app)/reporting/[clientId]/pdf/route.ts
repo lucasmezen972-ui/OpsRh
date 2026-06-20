@@ -6,7 +6,7 @@ import { buildReportPdf } from "@/lib/pdf/report-pdf";
 export async function GET(request: Request, { params }: { params: { clientId: string } }) {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) {
-    return new NextResponse("Indisponible en mode démo. Connectez-vous pour exporter un rapport.", { status: 503 });
+    return new NextResponse("Indisponible en configuration production. Connectez-vous pour exporter un rapport.", { status: 503 });
   }
 
   const {

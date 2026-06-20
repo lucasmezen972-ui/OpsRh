@@ -3,7 +3,7 @@ import { createClient, isSupabaseConfigured } from "./server";
 
 export type NotificationMutationResult =
   | { ok: true }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "database"; message: string };
 
 async function ownerClient() {
   const supabase = createClient();
@@ -16,7 +16,7 @@ async function ownerClient() {
 
 export async function markNotificationRead(id: string): Promise<NotificationMutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode demo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase non configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez etre connecte." };
 
   const { error } = await supabase.from("notifications").update({ status: "lue" }).eq("id", id).eq("user_id", user.id);
@@ -28,7 +28,7 @@ export async function markNotificationRead(id: string): Promise<NotificationMuta
 
 export async function markAllNotificationsRead(): Promise<NotificationMutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode demo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase non configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez etre connecte." };
 
   const { error } = await supabase.from("notifications").update({ status: "lue" }).eq("user_id", user.id).eq("status", "non_lue");

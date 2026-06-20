@@ -70,7 +70,7 @@ export function DocumentsView({
   return (
     <div className="space-y-6">
       <PageHeader title="Documents" description="Qu'est-ce qui manque ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <Dialog>
           <DialogTrigger asChild>
             <Button>

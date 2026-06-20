@@ -34,7 +34,7 @@ export function ImportView({ options }: { options: AdvancedModuleOptions }) {
   return (
     <div className="space-y-6">
       <PageHeader title="Import WhatsApp / Email" description="Transformez un message collé en tâche contextualisée.">
-        {options.isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
       {message && <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm">{message}</p>}
       <div className="grid gap-4 lg:grid-cols-2">

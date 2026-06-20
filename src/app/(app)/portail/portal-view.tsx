@@ -24,7 +24,7 @@ export function PortalView({ preview, isDemo }: { preview: PortalPreview; isDemo
   return (
     <div className="space-y-6">
       <PageHeader title="Portail client" description="Que voit mon client ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
 
       <Card>

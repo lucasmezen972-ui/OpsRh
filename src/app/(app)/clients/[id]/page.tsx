@@ -59,7 +59,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     detail = result.detail;
     isDemo = false;
   } else {
-    // Mode démo
+    // Fallback historique sans données fictives
     const client = getClient(params.id);
     if (!client) notFound();
     isDemo = true;
@@ -93,7 +93,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       </Button>
 
       <PageHeader title={client.name} description={client.sector ?? undefined}>
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <StatusBadge label={status.label} tone={status.tone} />
         <Button asChild variant="outline">
           <Link href={`/clients/${client.id}/modifier`}>

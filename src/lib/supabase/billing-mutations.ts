@@ -4,7 +4,7 @@ import type { PreInvoiceStatus } from "@/lib/types";
 
 export type MutationResult =
   | { ok: true }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "database"; message: string };
 
 async function ownerClient() {
   const supabase = createClient();
@@ -17,7 +17,7 @@ async function ownerClient() {
 
 export async function updatePreInvoiceStatusRecord(id: string, status: PreInvoiceStatus): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { error } = await supabase
