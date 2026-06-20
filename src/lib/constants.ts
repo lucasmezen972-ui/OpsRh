@@ -147,8 +147,8 @@ export const ADVANCED_MODULES: AdvancedModule[] = [
     key: "reporting",
     name: "Reporting",
     description:
-      "Génère des rapports mensuels client, synthèses de tâches, temps passé et points de vigilance.",
-    status: "bientot",
+      "Génère des rapports mensuels client, synthèses de tâches, temps passé et points de vigilance. Disponible dans la section Reporting.",
+    status: "active",
     icon: "BarChart3",
   },
   {
