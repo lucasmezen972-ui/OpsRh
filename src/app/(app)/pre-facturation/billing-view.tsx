@@ -35,6 +35,22 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
   const aVerifier = board.rows.filter((p) => p.status === "a_verifier").length;
   const pretes = board.rows.filter((p) => p.status === "prete").length;
 
+  function exportPdf(row: PreInvoiceRow) {
+    if (isDemo) {
+      // Mode démo : génération côté navigateur (pas de données réelles en base).
+      downloadPreInvoicePdf(row);
+      return;
+    }
+    // Connecté : PDF professionnel généré côté serveur (pdf-lib).
+    window.open(`/pre-facturation/${row.id}/pdf`, "_blank");
+    setMessage("PDF de pré-facturation généré.");
+    startTransition(async () => {
+      const result = await updatePreInvoiceStatusAction(row.id, "exportee");
+      if (!result.ok) setMessage(result.message);
+      else setActive((current) => (current?.id === row.id ? { ...current, status: "exportee" } : current));
+    });
+  }
+
   function downloadPreInvoicePdf(row: PreInvoiceRow) {
     const fileName = `pre-facturation-${row.client_name ?? "client"}-${row.period_start}-${row.period_end}.pdf`
       .normalize("NFD")
@@ -135,7 +151,7 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
                           <Button variant="outline" size="sm" onClick={() => setActive(p)}>
                             Voir le détail
                           </Button>
-                          <Button variant="ghost" size="sm" disabled={pending} onClick={() => downloadPreInvoicePdf(p)}>
+                          <Button variant="ghost" size="sm" disabled={pending} onClick={() => exportPdf(p)}>
                             <FileDown className="size-4" /> Exporter en PDF
                           </Button>
                         </div>
@@ -238,7 +254,7 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
                 </div>
               )}
 
-              <Button variant="outline" disabled={pending} onClick={() => downloadPreInvoicePdf(active)}>
+              <Button variant="outline" disabled={pending} onClick={() => exportPdf(active)}>
                 <FileDown className="size-4" /> Exporter en PDF
               </Button>
             </>
