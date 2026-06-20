@@ -221,14 +221,14 @@ export default function MailsPage() {
           ...current,
         ]);
         setMessage("Mail généré et enregistré en brouillon.");
-      } else if (result.reason === "demo_mode") {
+      } else if (result.reason === "configuration") {
         const id = `demo-${Date.now()}`;
         setLastGeneratedId(id);
         setGenerated((current) => [
           { id, owner_id: "", client_id: clientId, hr_case_id: caseId, template_id: null, subject: s, body: nextBody, status: "brouillon", created_at: new Date().toISOString() },
           ...current,
         ]);
-        setMessage("Mail généré en brouillon local (mode démo).");
+        setMessage("Mail généré en brouillon local (configuration production).");
       } else {
         setMessage(result.message);
       }
@@ -261,7 +261,7 @@ export default function MailsPage() {
     }
     if (lastGeneratedId.startsWith("demo-") || lastGeneratedId.startsWith("local-")) {
       setGenerated((current) => current.map((mail) => (mail.id === lastGeneratedId ? { ...mail, status: "envoye" } : mail)));
-      setMessage("Mail marqué comme envoyé en mode démo.");
+      setMessage("Mail marqué comme envoyé en configuration production.");
       return;
     }
     startTransition(async () => {
@@ -285,12 +285,12 @@ export default function MailsPage() {
     setMessage("Création du modèle en cours...");
     startTransition(async () => {
       const result = await createEmailTemplateAction({ title, type: tplType, subject: tplSubject, body: tplBody, variables });
-      if (result.ok || result.reason === "demo_mode") {
+      if (result.ok || result.reason === "configuration") {
         setTemplateList((current) => [
           { id: result.ok ? result.id ?? `tpl-${Date.now()}` : `demo-tpl-${Date.now()}`, owner_id: "", title, type: tplType, subject: tplSubject, body: tplBody, variables, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           ...current,
         ]);
-        setMessage(result.ok ? "Modèle créé." : "Modèle créé localement en mode démo.");
+        setMessage(result.ok ? "Modèle créé." : "Modèle créé localement en configuration production.");
       } else {
         setMessage(result.message);
       }

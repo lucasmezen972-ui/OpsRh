@@ -17,7 +17,7 @@ export type CreateClientInput = {
 
 export type CreateClientResult =
   | { ok: true; clientId: string }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "validation" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "validation" | "database"; message: string };
 
 function clean(value: string | null | undefined) {
   if (!value) return null;
@@ -31,7 +31,7 @@ export async function createClientRecord(input: CreateClientInput): Promise<Crea
   if (!isSupabaseConfigured || !supabase) {
     return {
       ok: false,
-      reason: "demo_mode",
+      reason: "configuration",
       message: "Supabase n'est pas configuré. Le client n'a pas été enregistré.",
     };
   }
@@ -120,7 +120,7 @@ export async function updateClientRecord(
   const supabase = createClient();
 
   if (!isSupabaseConfigured || !supabase) {
-    return { ok: false, reason: "demo_mode", message: "Supabase n'est pas configuré. Modification non enregistrée." };
+    return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré. Modification non enregistrée." };
   }
 
   const name = clean(input.name);

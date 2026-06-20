@@ -33,7 +33,7 @@ export function AssistantView({ options }: { options: AdvancedModuleOptions }) {
   return (
     <div className="space-y-6">
       <PageHeader title="Assistant IA" description="Relances, synthèses et prochaines actions à partir de vos dossiers.">
-        {options.isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
       {message && <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm">{message}</p>}
       <div className="grid gap-4 lg:grid-cols-[380px_1fr]">

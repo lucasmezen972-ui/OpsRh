@@ -77,7 +77,7 @@ export default async function DashboardPage() {
         title="À traiter aujourd'hui"
         description={`${dateLabel.charAt(0).toUpperCase()}${dateLabel.slice(1)} — voici ce qui demande votre attention.`}
       >
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <Button asChild variant="outline">
           <Link href="/temps">Saisir du temps</Link>
         </Button>

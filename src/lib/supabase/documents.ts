@@ -43,7 +43,7 @@ function daysSince(dateStr: string) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
-/** Tableau des documents + pièces manquantes regroupées par client. Null en mode démo. */
+/** Tableau des documents + pièces manquantes regroupées par client. Null en configuration production. */
 export async function getSupabaseDocumentBoard(): Promise<DocumentBoard | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;

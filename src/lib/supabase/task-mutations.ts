@@ -4,7 +4,7 @@ import type { Priority, TaskStatus, TaskType } from "@/lib/types";
 
 export type MutationResult =
   | { ok: true }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "validation" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "validation" | "database"; message: string };
 
 export type CreateTaskInput = {
   title: string;
@@ -35,7 +35,7 @@ async function ownerClient() {
 
 export async function createTaskRecord(input: CreateTaskInput): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Supabase n'est pas configuré." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez être connecté." };
 
   const title = clean(input.title);
@@ -62,7 +62,7 @@ export async function createTaskRecord(input: CreateTaskInput): Promise<Mutation
 
 export async function completeTaskRecord(id: string): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { data, error } = await supabase
@@ -90,7 +90,7 @@ export async function completeTaskRecord(id: string): Promise<MutationResult> {
 
 export async function postponeTaskRecord(id: string, days = 1): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { data } = await supabase.from("tasks").select("due_date").eq("id", id).eq("owner_id", user.id).single();
@@ -111,7 +111,7 @@ export async function postponeTaskRecord(id: string, days = 1): Promise<Mutation
 
 export async function deleteTaskRecord(id: string): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { error } = await supabase.from("tasks").delete().eq("id", id).eq("owner_id", user.id);

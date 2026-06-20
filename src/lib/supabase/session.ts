@@ -9,7 +9,7 @@ export interface SessionContext {
 /**
  * Contexte de l'utilisateur connecté (profil + notifications).
  * Renvoie null si Supabase n'est pas configuré ou si aucune session n'existe,
- * afin que l'interface bascule sur les données de démonstration.
+ * sans créer de fallback fictif.
  */
 export async function getSessionContext(): Promise<SessionContext | null> {
   const supabase = createClient();

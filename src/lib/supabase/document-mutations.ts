@@ -4,7 +4,7 @@ import type { DocumentStatus, DocumentType } from "@/lib/types";
 
 export type MutationResult =
   | { ok: true }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "validation" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "validation" | "database"; message: string };
 
 export type CreateDocumentInput = {
   name: string;
@@ -37,7 +37,7 @@ async function ownerClient() {
 
 export async function createDocumentRecord(input: CreateDocumentInput): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Supabase n'est pas configuré." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez être connecté." };
 
   const name = clean(input.name);
@@ -100,7 +100,7 @@ export async function createDocumentRecord(input: CreateDocumentInput): Promise<
 
 export async function updateDocumentStatusRecord(id: string, status: DocumentStatus): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { error } = await supabase
@@ -117,7 +117,7 @@ export async function updateDocumentStatusRecord(id: string, status: DocumentSta
 
 export async function deleteDocumentRecord(id: string): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { data, error: readError } = await supabase
@@ -142,10 +142,10 @@ export async function deleteDocumentRecord(id: string): Promise<MutationResult> 
 
 export async function getDocumentDownloadUrl(id: string): Promise<
   | { ok: true; url: string }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "not_found" | "database"; message: string }
+  | { ok: false; reason: "configuration" | "unauthenticated" | "not_found" | "database"; message: string }
 > {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   const { data, error } = await supabase
@@ -170,7 +170,7 @@ export async function getDocumentDownloadUrl(id: string): Promise<
 /** Met à jour le statut d'une pièce de checklist (relancer / reçu / validé). */
 export async function setChecklistItemStatusRecord(itemId: string, status: DocumentStatus): Promise<MutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Non connecté." };
 
   // RLS garantit que la pièce appartient à une checklist de l'utilisateur.

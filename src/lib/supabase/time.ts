@@ -32,7 +32,7 @@ function firstDayOfCurrentMonth() {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 }
 
-/** Vue complète du temps passé. Null en mode démo. */
+/** Vue complète du temps passé. Null en configuration production. */
 export async function getSupabaseTimeView(): Promise<TimeView | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;

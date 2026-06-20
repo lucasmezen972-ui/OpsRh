@@ -26,7 +26,7 @@ async function countExists(
 
 /**
  * État d'avancement de la prise en main, pour l'utilisateur connecté.
- * Renvoie null en mode démo (l'onboarding ne s'affiche pas).
+ * Renvoie null en configuration production (l'onboarding ne s'affiche pas).
  */
 export async function getOnboardingStatus(): Promise<OnboardingStatus | null> {
   const supabase = createClient();

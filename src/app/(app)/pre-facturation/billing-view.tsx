@@ -37,7 +37,7 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
 
   function exportPdf(row: PreInvoiceRow) {
     if (isDemo) {
-      // Mode démo : génération côté navigateur (pas de données réelles en base).
+      // Génération côté navigateur indisponible sans persistance Supabase.
       downloadPreInvoicePdf(row);
       return;
     }
@@ -96,7 +96,7 @@ export function BillingView({ board, isDemo }: { board: PreInvoiceBoard; isDemo:
   return (
     <div className="space-y-6">
       <PageHeader title="Pré-facturation" description="Que dois-je facturer ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
       {message && (
         <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">

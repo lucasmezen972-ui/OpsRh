@@ -17,7 +17,7 @@ export type CreateCaseInput = {
 
 export type CreateCaseResult =
   | { ok: true; caseId: string }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "validation" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "validation" | "database"; message: string };
 
 function clean(value: string | null | undefined) {
   if (!value) return null;
@@ -29,7 +29,7 @@ export async function createCaseRecord(input: CreateCaseInput): Promise<CreateCa
   const supabase = createClient();
 
   if (!isSupabaseConfigured || !supabase) {
-    return { ok: false, reason: "demo_mode", message: "Supabase n'est pas configuré. Le dossier n'a pas été enregistré." };
+    return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré. Le dossier n'a pas été enregistré." };
   }
 
   const title = clean(input.title);
@@ -117,7 +117,7 @@ export async function updateCaseRecord(caseId: string, input: UpdateCaseInput): 
   const supabase = createClient();
 
   if (!isSupabaseConfigured || !supabase) {
-    return { ok: false, reason: "demo_mode", message: "Supabase n'est pas configuré. Modification non enregistrée." };
+    return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré. Modification non enregistrée." };
   }
 
   const title = clean(input.title);

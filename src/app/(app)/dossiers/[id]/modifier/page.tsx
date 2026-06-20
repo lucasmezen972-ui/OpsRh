@@ -33,7 +33,7 @@ export default async function ModifierDossierPage({ params }: { params: { id: st
       </Button>
 
       <PageHeader title={`Modifier — ${hrCase.title}`} description="Mettez à jour les informations du dossier.">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
 
       <EditCaseForm hrCase={hrCase} />

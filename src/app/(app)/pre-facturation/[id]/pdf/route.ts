@@ -5,7 +5,7 @@ import { buildPreInvoicePdf } from "@/lib/pdf/pre-invoice-pdf";
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) {
-    return new NextResponse("Indisponible en mode démo. Connectez-vous pour exporter une pré-facture.", { status: 503 });
+    return new NextResponse("Indisponible en configuration production. Connectez-vous pour exporter une pré-facture.", { status: 503 });
   }
 
   const {

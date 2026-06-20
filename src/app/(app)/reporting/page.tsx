@@ -54,7 +54,7 @@ export default async function ReportingPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Reporting" description={`Synthèse mensuelle de votre activité — ${label}.`}>
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
 
       {reports.length === 0 ? (

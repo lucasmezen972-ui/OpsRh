@@ -66,7 +66,7 @@ export default async function ClientsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Clients" description="Quels clients je gère ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <Button asChild>
           <Link href="/clients/nouveau">
             <Plus className="size-4" /> Nouveau client

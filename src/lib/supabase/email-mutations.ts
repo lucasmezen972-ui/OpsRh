@@ -3,7 +3,7 @@ import { createClient, isSupabaseConfigured } from "./server";
 
 export type EmailMutationResult =
   | { ok: true; id?: string }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "validation" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "validation" | "database"; message: string };
 
 async function ownerClient() {
   const supabase = createClient();
@@ -27,7 +27,7 @@ export async function saveGeneratedEmail(input: {
   status?: "brouillon" | "envoye";
 }): Promise<EmailMutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode demo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase non configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez etre connecte." };
   if (!clean(input.subject)) return { ok: false, reason: "validation", message: "L'objet est obligatoire." };
   if (!clean(input.body)) return { ok: false, reason: "validation", message: "Le corps du mail est obligatoire." };
@@ -52,7 +52,7 @@ export async function saveGeneratedEmail(input: {
 
 export async function markGeneratedEmailSent(id: string): Promise<EmailMutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode demo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase non configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez etre connecte." };
 
   const { error } = await supabase
@@ -74,7 +74,7 @@ export async function createEmailTemplate(input: {
   variables?: string[];
 }): Promise<EmailMutationResult> {
   const { supabase, user } = await ownerClient();
-  if (!supabase) return { ok: false, reason: "demo_mode", message: "Mode demo." };
+  if (!supabase) return { ok: false, reason: "configuration", message: "Supabase non configuré." };
   if (!user) return { ok: false, reason: "unauthenticated", message: "Vous devez etre connecte." };
   if (!clean(input.title) || !clean(input.subject) || !clean(input.body)) {
     return { ok: false, reason: "validation", message: "Titre, objet et corps sont obligatoires." };

@@ -39,7 +39,7 @@ export function AnalyseView({ options, initialDocumentId = "" }: { options: Adva
   return (
     <div className="space-y-6">
       <PageHeader title="Analyse automatique des documents" description="Détection du type, points à vérifier et statut conseillé.">
-        {options.isDemo && <Badge variant="warning">Mode démo</Badge>}
+
       </PageHeader>
       {message && <p role="status" className="rounded-md border bg-muted px-3 py-2 text-sm">{message}</p>}
       <div className="grid gap-4 lg:grid-cols-2">

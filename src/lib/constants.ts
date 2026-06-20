@@ -141,16 +141,15 @@ export const ADVANCED_MODULES: AdvancedModule[] = [
     name: "Assistant IA",
     description:
       "Rédige des mails, résume un dossier, propose les prochaines actions. L'IA assiste mais ne décide jamais à votre place.",
-    status: "active",
+    status: "bientot",
     icon: "Sparkles",
-    href: "/modules/ia",
   },
   {
     key: "reporting",
     name: "Reporting",
     description:
-      "Génère des rapports mensuels client, synthèses de tâches, temps passé et points de vigilance. Disponible dans la section Reporting.",
-    status: "active",
+      "Génèrera des rapports mensuels client, synthèses de tâches, temps passé et points de vigilance.",
+    status: "bientot",
     icon: "BarChart3",
   },
   {
@@ -158,26 +157,23 @@ export const ADVANCED_MODULES: AdvancedModule[] = [
     name: "Signature électronique",
     description:
       "Faites signer devis, contrats de mission et validations. Le document signé est archivé automatiquement.",
-    status: "active",
+    status: "bientot",
     icon: "PenTool",
-    href: "/modules/signature",
   },
   {
     key: "analyse",
     name: "Analyse automatique des documents",
     description:
       "Détecte le type de document, l'associe à une checklist, repère les dates d'expiration et signale les incohérences.",
-    status: "active",
+    status: "bientot",
     icon: "ScanLine",
-    href: "/modules/analyse",
   },
   {
     key: "import",
     name: "Import WhatsApp / Email",
     description:
       "Transforme un email ou un message en tâche ou demande client, et rattache la conversation au bon dossier.",
-    status: "active",
+    status: "bientot",
     icon: "Inbox",
-    href: "/modules/import",
   },
 ];

@@ -4,7 +4,7 @@ import type { ClientRequestType, Priority } from "@/lib/types";
 
 export type MutationResult =
   | { ok: true }
-  | { ok: false; reason: "demo_mode" | "unauthenticated" | "validation" | "database"; message: string };
+  | { ok: false; reason: "configuration" | "unauthenticated" | "validation" | "database"; message: string };
 
 export type CreateClientRequestInput = {
   client_id: string;
@@ -22,7 +22,7 @@ function clean(value: string | null | undefined) {
 
 export async function createClientRequestRecord(input: CreateClientRequestInput): Promise<MutationResult> {
   const supabase = createClient();
-  if (!isSupabaseConfigured || !supabase) return { ok: false, reason: "demo_mode", message: "Mode démo." };
+  if (!isSupabaseConfigured || !supabase) return { ok: false, reason: "configuration", message: "Supabase n'est pas configuré." };
 
   const {
     data: { user },

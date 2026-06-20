@@ -32,6 +32,6 @@ export async function createCaseAction(formData: FormData) {
     redirect(`/dossiers/${result.caseId}`);
   }
 
-  // En mode démo ou en cas d'erreur de validation, on revient à la liste.
+  // En configuration production ou en cas d'erreur de validation, on revient à la liste.
   redirect("/dossiers");
 }

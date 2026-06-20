@@ -33,7 +33,7 @@ export function currentMonthPeriod(): ReportPeriod {
   };
 }
 
-/** Synthèse mensuelle par client (mois en cours). Null en mode démo. */
+/** Synthèse mensuelle par client (mois en cours). Null en configuration production. */
 export async function getReportOverview(): Promise<ClientReport[] | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;

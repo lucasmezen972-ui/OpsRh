@@ -34,7 +34,7 @@ function daysSince(dateStr: string) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
-/** Liste des tâches ouvertes + relances suggérées. Null en mode démo. */
+/** Liste des tâches ouvertes + relances suggérées. Null en configuration production. */
 export async function getSupabaseTaskBoard(): Promise<TaskBoard | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;
@@ -109,7 +109,7 @@ export async function getSupabaseTaskBoard(): Promise<TaskBoard | null> {
   return { tasks: taskRows, suggestions };
 }
 
-/** Options dossiers (Supabase) pour les menus déroulants. Null en mode démo. */
+/** Options dossiers (Supabase) pour les menus déroulants. Null en configuration production. */
 export async function getSupabaseCaseOptions(): Promise<{ id: string; title: string; client_id: string }[] | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;

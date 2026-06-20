@@ -21,7 +21,7 @@ const RECEIVED_DOC_STATES = ["recu", "valide"];
 
 /**
  * Renvoie null si Supabase n'est pas configuré ou si aucun utilisateur n'est
- * connecté, afin de conserver le repli sur les données de démonstration.
+ * connecté, sans repli vers des données fictives.
  */
 export async function getSupabaseCaseList(): Promise<CaseListItem[] | null> {
   const supabase = createClient();
@@ -104,7 +104,7 @@ export async function getSupabaseCaseList(): Promise<CaseListItem[] | null> {
   }));
 }
 
-/** Liste minimale des clients (Supabase) pour alimenter un menu déroulant. Null en mode démo. */
+/** Liste minimale des clients (Supabase) pour alimenter un menu déroulant. Null en configuration production. */
 export async function getSupabaseClientOptions(): Promise<{ id: string; name: string }[] | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;

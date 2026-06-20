@@ -1,6 +1,6 @@
 // Types métier Ops RH — alignés sur le schéma Supabase (voir supabase/migrations).
 
-export type UserRole = "freelance" | "collaborateur" | "client";
+export type UserRole = "freelance" | "collaborateur" | "client" | "platform_admin";
 
 export type ClientStatus = "actif" | "en_pause" | "termine";
 

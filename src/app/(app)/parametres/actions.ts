@@ -23,7 +23,7 @@ async function authenticatedClient() {
 
 export async function updateProfileAction(_state: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
   const { supabase, user } = await authenticatedClient();
-  if (!supabase) return { ok: false, message: "Mode démo : connectez Supabase pour enregistrer." };
+  if (!supabase) return { ok: false, message: "Supabase n'est pas configuré : enregistrement impossible." };
   if (!user) redirect("/login");
 
   const { error } = await supabase
@@ -46,7 +46,7 @@ export async function updateUserSettingsAction(
   formData: FormData
 ): Promise<SettingsActionState> {
   const { supabase, user } = await authenticatedClient();
-  if (!supabase) return { ok: false, message: "Mode démo : connectez Supabase pour enregistrer." };
+  if (!supabase) return { ok: false, message: "Supabase n'est pas configuré : enregistrement impossible." };
   if (!user) redirect("/login");
 
   const defaultRate = Number(value(formData, "default_hourly_rate"));

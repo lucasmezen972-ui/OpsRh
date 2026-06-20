@@ -88,7 +88,7 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
       </Button>
 
       <PageHeader title={hrCase.title} description={client?.name ?? undefined}>
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <StatusBadge label={status.label} tone={status.tone} />
         <StatusBadge label={priority.label} tone={priority.tone} />
         <Button asChild variant="outline">

@@ -10,7 +10,7 @@ export interface PortalPreview {
 
 const MISSING_DOC_STATES = ["demande", "a_corriger", "expire"];
 
-/** Aperçu du portail pour le premier client de l'utilisateur. Null en mode démo. */
+/** Aperçu du portail pour le premier client de l'utilisateur. Null en configuration production. */
 export async function getSupabasePortalPreview(): Promise<PortalPreview | null> {
   const supabase = createClient();
   if (!isSupabaseConfigured || !supabase) return null;

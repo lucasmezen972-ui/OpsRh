@@ -205,7 +205,7 @@ export function TasksView({
   return (
     <div className="space-y-6">
       <PageHeader title="Tâches" description="Que dois-je faire ?">
-        {isDemo && <Badge variant="warning">Mode démo</Badge>}
+
         <Dialog>
           <DialogTrigger asChild>
             <Button>
